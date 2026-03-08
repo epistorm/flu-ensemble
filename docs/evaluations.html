@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluations — Influenza Hospitalization Forecast</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="header-row">
+            <div>
+                <h1>Influenza Hospitalization Forecast</h1>
+                <p class="subtitle">Epistorm Ensemble weekly forecasts</p>
+            </div>
+            <nav class="header-nav">
+                <a class="nav-link" href="index.html">Dashboard</a>
+                <a class="nav-link active" href="evaluations.html">Evaluations</a>
+                <a class="nav-link" href="about.html">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="eval-title-row">
+            <h2 class="section-title">Model Evaluation</h2>
+            <button class="eval-info-btn" id="eval-info-btn">What is WIS?</button>
+        </div>
+        <p class="eval-subtitle">Weighted Interval Score and coverage across states and forecast dates.</p>
+
+        <!-- WIS info modal -->
+        <div class="eval-modal-overlay" id="eval-modal-overlay">
+            <div class="eval-modal">
+                <button class="eval-modal-close" id="eval-modal-close">&times;</button>
+                <h3>Weighted Interval Score (WIS)</h3>
+                <p>The <strong>Weighted Interval Score</strong> is a proper scoring rule for quantile forecasts. It generalizes the absolute error to probabilistic predictions by evaluating the sharpness and calibration of prediction intervals.</p>
+                <p><strong>WIS (Raw)</strong> shows the mean Weighted Interval Score — lower is better.</p>
+                <p>The <strong>WIS ratio</strong> (WIS / Baseline) compares each model's mean WIS to the FluSight-baseline model's mean WIS over the same time period and horizons. Values below 1.0 indicate the model outperforms the baseline.</p>
+                <p><strong>Coverage</strong> measures the fraction of observations that fall within a given prediction interval. Well-calibrated models should have coverage close to the nominal level (e.g., 50% PI should cover ~50% of observations).</p>
+            </div>
+        </div>
+
+        <!-- Top section: map + controls/time series -->
+        <div class="card eval-top-card">
+            <div class="eval-top-row">
+                <!-- Map (left) with vertical legend -->
+                <div class="eval-map-area">
+                    <div class="eval-map-with-legend">
+                        <div class="eval-map-container">
+                            <svg id="eval-map"></svg>
+                        </div>
+                        <div class="eval-legend-container" id="eval-legend"></div>
+                    </div>
+                </div>
+
+                <!-- Right panel: controls + time series -->
+                <div class="eval-right-panel">
+                    <div class="control-group">
+                        <div class="control-title">Ensemble Model</div>
+                        <div class="seg-group eval-model-control" id="eval-model-buttons">
+                            <button class="seg-btn eval-model-btn active" data-model="Median Epistorm Ensemble">Median</button>
+                            <button class="seg-btn eval-model-btn" data-model="LOP Epistorm Ensemble">LOP</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-title">Metric</div>
+                        <div class="eval-metric-row">
+                            <div class="eval-metric-group">
+                                <span class="eval-metric-label">WIS</span>
+                                <div class="seg-group eval-metric-pair" id="eval-wis-metric">
+                                    <button class="seg-btn eval-metric-btn active" data-metric="wis_relative">Relative</button>
+                                    <button class="seg-btn eval-metric-btn" data-metric="wis_raw">Raw</button>
+                                </div>
+                            </div>
+                            <div class="eval-metric-group">
+                                <span class="eval-metric-label">Coverage</span>
+                                <div class="seg-group eval-metric-pair" id="eval-cov-metric">
+                                    <button class="seg-btn eval-metric-btn" data-metric="cov50">50%</button>
+                                    <button class="seg-btn eval-metric-btn" data-metric="cov95">95%</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-title">Aggregation</div>
+                        <div class="seg-group eval-agg-control" id="eval-agg-buttons">
+                            <button class="seg-btn eval-agg-btn" data-agg="season">Full Season</button>
+                            <button class="seg-btn eval-agg-btn" data-agg="last2">Last 2 Wk</button>
+                            <button class="seg-btn eval-agg-btn active" data-agg="last4">Last 4 Wk</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-title">Horizon</div>
+                        <div class="seg-group eval-horizon-control" id="eval-horizon-buttons">
+                            <button class="seg-btn eval-hz-btn active" data-hz="all">All</button>
+                            <button class="seg-btn eval-hz-btn" data-hz="0">Wk 1</button>
+                            <button class="seg-btn eval-hz-btn" data-hz="1">Wk 2</button>
+                            <button class="seg-btn eval-hz-btn" data-hz="2">Wk 3</button>
+                            <button class="seg-btn eval-hz-btn" data-hz="3">Wk 4</button>
+                        </div>
+                    </div>
+                    <!-- Time series chart -->
+                    <div class="eval-hover-chart" id="eval-hover-chart">
+                        <svg id="eval-ts-chart"></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom section: box plot + coverage -->
+        <hr class="section-divider">
+        <h2 class="section-title">Model Comparison</h2>
+        <p class="eval-subtitle">WIS relative to baseline and prediction interval coverage across all models</p>
+
+        <div class="card eval-bottom-card">
+            <div class="eval-bottom-row">
+                <!-- Left: Box plot -->
+                <div class="eval-boxplot-area">
+                    <div class="eval-boxplot-header">
+                        <span class="eval-chart-title">Weighted Interval Score / Baseline</span>
+                        <div class="seg-group eval-log-toggle" id="eval-log-toggle">
+                            <button class="seg-btn eval-log-btn active" data-scale="linear">Linear</button>
+                            <button class="seg-btn eval-log-btn" data-scale="log">Use Log Scale</button>
+                        </div>
+                    </div>
+                    <svg id="eval-boxplot"></svg>
+                </div>
+                <!-- Right: Coverage plot -->
+                <div class="eval-coverage-area">
+                    <span class="eval-chart-title">Coverage</span>
+                    <svg id="eval-coverage"></svg>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="funding-footer">
+        This work is supported by Cooperative Agreements NU38PW000005 from The Centers for Disease Control and Prevention (CDC) and CSTE and from CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.
+    </footer>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="eval-tooltip"></div>
+
+    <script src="js/evaluations.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epistorm Ensemble — Influenza Hospitalization Forecast</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="header-row">
+            <div>
+                <h1>Influenza Hospitalization Forecast</h1>
+                <p class="subtitle">Epistorm Ensemble weekly forecasts <span class="last-updated" id="last-updated"></span><button class="most-recent-btn" onclick="jumpToMostRecent()">Most Recent Forecast</button></p>
+            </div>
+            <nav class="header-nav">
+                <a class="nav-link active" href="index.html">Dashboard</a>
+                <a class="nav-link" href="evaluations.html">Evaluations</a>
+                <a class="nav-link" href="about.html">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- National Overview section -->
+        <h2 class="section-title">National Overview</h2>
+        <!-- Tab bar -->
+        <div class="tab-bar" id="tab-bar">
+            <button class="tab active" data-tab="activity">Influenza Activity</button>
+            <button class="tab" data-tab="trend">Influenza Trend</button>
+            <button class="tab" data-tab="admissions">Weekly Hospital Admissions</button>
+            <div class="tab-bar-actions">
+                <button class="tab-action" onclick="startTour()">Guided Tour</button>
+            </div>
+        </div>
+        <div class="cards-row">
+            <!-- Map card -->
+            <div class="card card-map">
+                <div class="map-with-controls">
+                    <div class="map-left-controls">
+                        <div class="control-group">
+                            <div class="control-title">Uncertainty</div>
+                            <div class="seg-group estimate-control" id="estimate-buttons">
+                                <button class="seg-btn estimate-seg active" data-estimate="most_likely">Most Likely<span class="estimate-desc">Expected forecast</span></button>
+                                <button class="seg-btn estimate-seg" data-estimate="lower">Lower End<span class="estimate-desc">90% chance of more</span></button>
+                                <button class="seg-btn estimate-seg" data-estimate="upper">Upper End<span class="estimate-desc">90% chance of less</span></button>
+                            </div>
+                        </div>
+                        <div class="rate-toggle" id="rate-toggle" style="display:none;">
+                            <button class="rate-btn active" data-rate="total">Total</button>
+                            <button class="rate-btn" data-rate="percapita">Per 100k</button>
+                        </div>
+                        <div class="map-trend-summary" id="map-trend-summary"></div>
+                        <div class="legend-container" id="legend"></div>
+                    </div>
+                    <div class="map-container">
+                        <svg id="us-map"></svg>
+                    </div>
+                </div>
+                <div class="map-bottom-controls">
+                    <div class="control-title">Forecast Week</div>
+                    <div class="seg-group horizon-control horizontal" id="date-buttons">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <button class="info-btn" data-info="map" aria-label="Info">i</button>
+            </div>
+
+            <!-- Gauges card -->
+            <div class="card card-gauges">
+                <div class="gauges-overview" id="gauges-overview">
+                    <h3 class="forecast-context-title" id="forecast-context-title"></h3>
+                    <p class="overview-primary" id="overview-primary"></p>
+                </div>
+                <div class="gauges-stack">
+                    <div class="gauge-wrapper" id="active-gauge-wrapper">
+                        <h3 class="gauge-title" id="active-gauge-title">Trend Forecast</h3>
+                        <svg id="gauge-active"></svg>
+                    </div>
+                    <div class="bar-chart-container" id="us-bar-chart"></div>
+                    <div class="admissions-dist-container" id="admissions-dist"></div>
+                </div>
+                <button class="info-btn" data-info="gauges" aria-label="Info">i</button>
+            </div>
+        </div>
+
+        <!-- Trajectory section -->
+        <hr class="section-divider">
+        <h2 class="section-title">Forecast Details</h2>
+        <p class="section-subtitle">Quantile forecast by state. Select a state from the map above or the dropdown below. Click anywhere on the chart to jump to the forecast generated that week.</p>
+        <div class="card card-trajectories" id="trajectory-section">
+            <div class="traj-header">
+                <div class="traj-controls">
+                    <label class="traj-label traj-label-location">
+                        Location
+                        <select id="traj-location" class="traj-select traj-select-location"></select>
+                    </label>
+                </div>
+            </div>
+            <div class="traj-body">
+                <div class="traj-chart-container">
+                    <svg id="traj-chart"></svg>
+                </div>
+                <div class="traj-context-panel" id="traj-context-panel">
+                    <h3 class="context-panel-title">Add Context</h3>
+                    <div class="context-section" id="ctx-seasons">
+                        <button class="context-section-header" data-section="seasons">
+                            <span>Compare to Previous Seasons</span>
+                            <span class="context-chevron">&#9662;</span>
+                        </button>
+                        <div class="context-section-body" id="ctx-seasons-body"></div>
+                    </div>
+                    <div class="context-section" id="ctx-activity">
+                        <button class="context-section-header" data-section="activity">
+                            <span>Activity Levels</span>
+                            <span class="context-chevron">&#9662;</span>
+                        </button>
+                        <div class="context-section-body" id="ctx-activity-body"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="traj-legend" id="traj-legend"></div>
+            <button class="info-btn" data-info="traj" aria-label="Info">i</button>
+        </div>
+    </main>
+
+    <footer class="funding-footer">
+        This work is supported by Cooperative Agreements NU38PW000005 from The Centers for Disease Control and Prevention (CDC) and CSTE and from CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.
+    </footer>
+
+    <!-- Tooltip containers -->
+    <div class="tooltip" id="tooltip"></div>
+    <div class="traj-tip" id="traj-tooltip"></div>
+
+    <script src="js/colors.js"></script>
+    <script src="js/legend.js"></script>
+    <script src="js/gauges.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/trajectories.js"></script>
+    <script src="js/tour.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
