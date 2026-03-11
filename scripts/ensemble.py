@@ -16,12 +16,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 api_key = os.environ.get('COVIDCAST_API_KEY', '4bee67d2520898')
 
-# Option A: If the old method still exists in your version
+# Set API key for both covidcast and Epidata clients
 try:
     covidcast.use_api_key(api_key)
 except AttributeError:
-    # Newer versions don't have this method
     os.environ['COVIDCAST_API_KEY'] = api_key
+
+# Set API key for delphi_epidata
+Epidata.auth = ('epidata', api_key)
 
 
 def get_versioned_data():
@@ -44,9 +46,13 @@ def get_versioned_data():
     # Convert to DataFrame
     if result_adm['result'] == 1:
         dfadm = pd.DataFrame(result_adm['epidata'])
+    else:
+        raise RuntimeError(f"Epidata API error (state): {result_adm.get('message')}")
+
+    if result_adm_us['result'] == 1:
         dfadm_us = pd.DataFrame(result_adm_us['epidata'])
     else:
-        print(f"No results: {result_adm.get('message')}")
+        raise RuntimeError(f"Epidata API error (nation): {result_adm_us.get('message')}")
 
     dfadm = dfadm[['geo_value', 'time_value','issue','value']]
     dfadm_us = dfadm_us[['geo_value', 'time_value','issue','value']]
