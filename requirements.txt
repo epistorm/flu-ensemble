@@ -1,5 +1,5 @@
+numpy<2
 pandas
-numpy
 pyarrow
 requests
 epiweeks
