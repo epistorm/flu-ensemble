@@ -384,9 +384,9 @@ def create_categorical_ensemble_quantile(df, obs_vers=None, model_name='Median E
                 continue
 
             # Compute count and rate changes using numpy arrays
-            forecast_values = grp['value'].values
-            quantiles = grp['output_type_id'].values
-            count_changes = forecast_values - val
+            forecast_values = grp['value'].values.astype(float)
+            quantiles = grp['output_type_id'].values.astype(float)
+            count_changes = forecast_values - float(val)
 
             population = pop_dict.get(loc)
             if population is None:
