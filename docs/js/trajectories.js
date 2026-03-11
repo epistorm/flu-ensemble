@@ -156,10 +156,11 @@ function buildActivitySection() {
 // --- Main draw function ---
 
 async function loadAndDrawTrajectories(fips) {
+    const folder = AppState.ensembleModel === "lop" ? "trajectories_lop" : "trajectories";
     try {
-        trajData = await d3.json(`data/trajectories/${fips}.json`);
+        trajData = await d3.json(`data/${folder}/${fips}.json`);
     } catch (e) {
-        console.warn(`No trajectory data for ${fips}`);
+        console.warn(`No trajectory data for ${fips} in ${folder}`);
         trajData = null;
     }
     drawTrajectories();

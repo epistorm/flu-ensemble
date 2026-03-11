@@ -6,31 +6,54 @@ const AppState = {
     currentRefDate: null,
     currentHorizon: 0,
     selectedState: "US",
-    admissionsRate: "total" // "total" or "percapita"
+    admissionsRate: "total", // "total" or "percapita"
+    ensembleModel: "median" // "median" or "lop"
 };
 
 let dashboardData = null;
+let dashboardDataLOP = null;
 let locationsData = null;
 let topoData = null;
 let usTrajData = null;
+let usTrajDataLOP = null;
 let targetDataAll = null;
 let activityThresholds = null;
 
+// Get the active dashboard data based on selected ensemble model
+function getActiveDashboardData() {
+    if (AppState.currentTab === "admissions" && AppState.ensembleModel === "lop" && dashboardDataLOP) {
+        return dashboardDataLOP;
+    }
+    return dashboardData;
+}
+
+// Get the active US trajectory data based on selected ensemble model
+function getActiveUsTrajData() {
+    if (AppState.currentTab === "admissions" && AppState.ensembleModel === "lop" && usTrajDataLOP) {
+        return usTrajDataLOP;
+    }
+    return usTrajData;
+}
+
 async function init() {
     try {
-        const [dd, ld, td, ut, tgt, at] = await Promise.all([
+        const [dd, ddLop, ld, td, ut, utLop, tgt, at] = await Promise.all([
             d3.json("data/dashboard_data.json"),
+            d3.json("data/dashboard_data_lop.json").catch(() => null),
             d3.json("data/locations.json"),
             d3.json("data/us-states.json"),
             d3.json("data/trajectories/US.json"),
+            d3.json("data/trajectories_lop/US.json").catch(() => null),
             d3.json("data/target_data.json"),
             d3.json("data/activity_thresholds.json")
         ]);
 
         dashboardData = dd;
+        dashboardDataLOP = ddLop;
         locationsData = ld;
         topoData = td;
         usTrajData = ut;
+        usTrajDataLOP = utLop;
         targetDataAll = tgt;
         activityThresholds = at;
 
@@ -86,6 +109,7 @@ function jumpToMostRecent() {
     AppState.currentEstimate = "most_likely";
     AppState.currentTab = "activity";
     AppState.admissionsRate = "total";
+    AppState.ensembleModel = "median";
     AppState.selectedState = "US";
 
     // Reset UI controls
@@ -95,6 +119,8 @@ function jumpToMostRecent() {
     d3.select('.estimate-seg[data-estimate="most_likely"]').classed("active", true);
     d3.selectAll(".rate-btn").classed("active", false);
     d3.select('.rate-btn[data-rate="total"]').classed("active", true);
+    d3.selectAll(".ensemble-btn").classed("active", false);
+    d3.select('.ensemble-btn[data-ensemble="median"]').classed("active", true);
     updateRateToggleVisibility();
 
     buildDateButtons();

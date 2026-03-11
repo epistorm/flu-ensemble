@@ -4,6 +4,7 @@ function initControls() {
     initTabs();
     initEstimateButtons();
     initRateToggle();
+    initEnsembleToggle();
     buildDateButtons();
 }
 
@@ -39,10 +40,33 @@ function initRateToggle() {
     updateRateToggleVisibility();
 }
 
+function initEnsembleToggle() {
+    d3.selectAll(".ensemble-btn").on("click", function () {
+        const model = d3.select(this).attr("data-ensemble");
+        AppState.ensembleModel = model;
+        d3.selectAll(".ensemble-btn").classed("active", false);
+        d3.select(this).classed("active", true);
+        updateAll();
+        // Reload trajectory chart with the selected ensemble's data
+        const fips = d3.select("#traj-location").property("value");
+        loadAndDrawTrajectories(fips);
+    });
+    updateEnsembleToggleVisibility();
+}
+
 function updateRateToggleVisibility() {
+    const isAdmissions = AppState.currentTab === "admissions";
     const toggle = document.getElementById("rate-toggle");
     if (toggle) {
-        toggle.style.display = AppState.currentTab === "admissions" ? "flex" : "none";
+        toggle.style.display = isAdmissions ? "flex" : "none";
+    }
+    updateEnsembleToggleVisibility();
+}
+
+function updateEnsembleToggleVisibility() {
+    const toggle = document.getElementById("ensemble-toggle");
+    if (toggle) {
+        toggle.style.display = AppState.currentTab === "admissions" ? "block" : "none";
     }
 }
 

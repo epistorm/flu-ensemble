@@ -24,7 +24,7 @@ const EVAL_TS_H = 180;
 const EVAL_BOX_W = 540;
 const EVAL_BOX_H = 440;
 const EVAL_COV_W = 440;
-const EVAL_COV_H = 400;
+const EVAL_COV_H = 470;
 const EVAL_FONT = "Helvetica Neue, Arial, sans-serif";
 
 // Color palette for models (deterministic, assigned at init)
@@ -302,18 +302,18 @@ function drawEvalMap() {
             const val = stateValues[fips];
             const name = evalFipsToName[fips] || fips;
             d3.select("#eval-tooltip")
-                .style("display", "block")
+                .style("display", "block").style("opacity", 1)
                 .html(`<strong>${name}</strong><br>${getMetricLabel()}: ${formatMetric(val)}`);
             evalHoveredFips = fips;
             drawHoverTimeSeries(fips);
         })
         .on("mousemove", (event) => {
             d3.select("#eval-tooltip")
-                .style("left", (event.pageX + 12) + "px")
-                .style("top", (event.pageY - 10) + "px");
+                .style("left", (event.clientX + 12) + "px")
+                .style("top", (event.clientY - 10) + "px");
         })
         .on("mouseleave", () => {
-            d3.select("#eval-tooltip").style("display", "none");
+            d3.select("#eval-tooltip").style("display", "none").style("opacity", 0);
             evalHoveredFips = null;
             drawHoverTimeSeries(null); // Show US
         });
@@ -323,10 +323,10 @@ function drawEvalMap() {
 
 function getMapColorScale(stateValues) {
     if (evalMetric === "wis_relative") {
-        // Diverging: blue (good) — light gray — brown (bad), centered at 1.0
+        // Diverging: green (good) — light gray — amber/brown (bad), centered at 1.0
         return d3.scaleDiverging()
             .domain([0.3, 1.0, 3.0])
-            .interpolator(d3.interpolateRgbBasis(["#4A7FB5", "#eef2f6", "#B8663D"]));
+            .interpolator(d3.interpolateRgbBasis(["#2a9d8f", "#f0f0f0", "#c67a2e"]));
     }
     if (evalMetric === "wis_raw") {
         // Sequential white to blue — higher WIS = darker blue
@@ -528,16 +528,16 @@ function drawHoverTimeSeries(fips) {
             .attr("cx", x(d.date)).attr("cy", y(d.value))
             .attr("r", 8).attr("fill", "transparent").style("cursor", "pointer")
             .on("mouseenter", (event) => {
-                tooltip.style("display", "block").html(
+                tooltip.style("display", "block").style("opacity", 1).html(
                     `<strong>${name}</strong><br>` +
                     `${d3.timeFormat("%b %d, %Y")(d.date)}<br>` +
                     `${getMetricLabel()}: ${formatMetric(d.value)}`
                 );
             })
             .on("mousemove", (event) => {
-                tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 10) + "px");
+                tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
             })
-            .on("mouseleave", () => { tooltip.style("display", "none"); });
+            .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
     });
 }
 
@@ -557,19 +557,13 @@ function drawBoxPlot() {
     const filtered = filterRows(evalWisRows);
     const allModels = evalWisMeta.models;
 
-    // For each model, compute WIS ratio per location → distribution
+    // For each model, collect individual WIS ratios (one per date/location/horizon)
     const modelRatios = {};
     for (const model of allModels) {
         const mRows = filtered.filter(r => r[0] === model);
-        const byLoc = {};
-        for (const r of mRows) {
-            if (!byLoc[r[1]]) byLoc[r[1]] = [];
-            byLoc[r[1]].push(r);
-        }
         const ratios = [];
-        for (const rows of Object.values(byLoc)) {
-            const ratio = computeWisRatio(rows);
-            if (ratio != null) ratios.push(ratio);
+        for (const r of mRows) {
+            if (r[5] > 0) ratios.push(r[4] / r[5]);
         }
         if (ratios.length > 0) modelRatios[model] = ratios;
     }
@@ -606,7 +600,7 @@ function drawBoxPlot() {
     g.append("line").attr("x1", x(1)).attr("y1", 0).attr("x2", x(1)).attr("y2", innerH)
         .attr("stroke", "#999").attr("stroke-width", 1).attr("stroke-dasharray", "6,4");
 
-    // Boxes
+    // Draw box visuals
     models.forEach(model => {
         const s = stats[model];
         const cy = y(model) + y.bandwidth() / 2;
@@ -642,26 +636,29 @@ function drawBoxPlot() {
             .attr("x1", x(cl(s.median))).attr("y1", boxTop)
             .attr("x2", x(cl(s.median))).attr("y2", boxTop + boxH)
             .attr("stroke", "#1a1a1a").attr("stroke-width", 2).attr("stroke-dasharray", "3,2");
+    });
 
-        // Hover rect for tooltip
+    // Hover rects on top of all visuals so they receive pointer events
+    models.forEach(model => {
+        const s = stats[model];
         g.append("rect")
             .attr("x", 0).attr("y", y(model))
             .attr("width", innerW).attr("height", y.bandwidth())
             .attr("fill", "transparent").style("cursor", "pointer")
             .on("mouseenter", (event) => {
-                tooltip.style("display", "block").html(
+                tooltip.style("display", "block").style("opacity", 1).html(
                     `<strong>${model}</strong><br>` +
                     `Median: ${s.median.toFixed(3)}<br>` +
                     `Mean: ${s.mean.toFixed(3)}<br>` +
                     `Q1–Q3: ${s.q1.toFixed(3)} – ${s.q3.toFixed(3)}<br>` +
                     `Whiskers: ${s.whisker_low.toFixed(3)} – ${s.whisker_high.toFixed(3)}<br>` +
-                    `States: ${s.n}`
+                    `n: ${s.n}`
                 );
             })
             .on("mousemove", (event) => {
-                tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 10) + "px");
+                tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
             })
-            .on("mouseleave", () => { tooltip.style("display", "none"); });
+            .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
     });
 
     // X axis
@@ -677,7 +674,9 @@ function drawBoxPlot() {
 
     // Y axis
     const yAxis = g.append("g").call(d3.axisLeft(y));
-    yAxis.selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "10px");
+    yAxis.selectAll("text")
+        .attr("font-family", EVAL_FONT).attr("font-size", "10px")
+        .attr("font-weight", d => /median epistorm ensemble|lop.*ensemble|flusight.*ensemble/i.test(d) ? "700" : "400");
 }
 
 // ====================== COVERAGE PLOT ======================
@@ -747,29 +746,35 @@ function drawCoveragePlot() {
         const el = d3.select(this);
         const data = modelCov[model];
         const color = MODEL_COLORS[model] || "#888";
+        const isHighlighted = /median epistorm ensemble|lop.*ensemble|flusight.*ensemble/i.test(model);
+        const lineOpacity = isHighlighted ? 1 : 0.2;
+        const lineWidth = isHighlighted ? 3 : 1.5;
+        const dotR = isHighlighted ? 4 : 2.5;
+        const dotOpacity = isHighlighted ? 1 : 0.2;
 
         el.append("path").datum(data).attr("d", lineGen)
-            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 2).attr("opacity", 0.8)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", lineWidth).attr("opacity", lineOpacity)
             .attr("class", "cov-line");
 
         el.selectAll(".cov-dot").data(data).join("circle")
             .attr("cx", (d, i) => x(piLevels[i])).attr("cy", d => y(d * 100))
-            .attr("r", 3).attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 1)
+            .attr("r", dotR).attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 1)
+            .attr("opacity", dotOpacity)
             .attr("class", "cov-dot");
     });
 
     // Hover interaction — find nearest model line, highlight, show tooltip with all PI coverages
     const overlay = g.append("rect")
         .attr("width", innerW).attr("height", innerH)
-        .attr("fill", "none").attr("pointer-events", "all");
+        .attr("fill", "transparent").style("cursor", "pointer");
 
     overlay.on("mousemove", (event) => {
         const [mx, my] = d3.pointer(event);
-        let nearestModel = null, nearestDist = Infinity;
+        let nearestModel = null, nearestDist = Infinity, nearestPiIdx = 0;
         activeModels.forEach(model => {
             modelCov[model].forEach((val, i) => {
                 const dist = Math.sqrt((mx - x(piLevels[i])) ** 2 + (my - y(val * 100)) ** 2);
-                if (dist < nearestDist) { nearestDist = dist; nearestModel = model; }
+                if (dist < nearestDist) { nearestDist = dist; nearestModel = model; nearestPiIdx = i; }
             });
         });
 
@@ -780,34 +785,37 @@ function drawCoveragePlot() {
                 d3.select(this).selectAll(".cov-dot").attr("opacity", hl ? 1 : 0.12).attr("r", hl ? 4.5 : 2.5);
             });
 
-            const data = modelCov[nearestModel];
-            let html = `<strong>${nearestModel}</strong>`;
-            piLevels.forEach((pi, i) => {
-                html += `<br>${pi}% PI: ${(data[i] * 100).toFixed(1)}%`;
-            });
-            tooltip.style("display", "block").html(html);
-            tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 10) + "px");
+            const covVal = modelCov[nearestModel][nearestPiIdx];
+            const pi = piLevels[nearestPiIdx];
+            const html = `<strong>${nearestModel}</strong><br>${pi}% PI Coverage: ${(covVal * 100).toFixed(1)}%`;
+            tooltip.style("display", "block").style("opacity", 1).html(html);
+            tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
         } else {
             resetCovHighlight();
-            tooltip.style("display", "none");
+            tooltip.style("display", "none").style("opacity", 0);
         }
     });
 
     overlay.on("mouseleave", () => {
         resetCovHighlight();
-        tooltip.style("display", "none");
+        tooltip.style("display", "none").style("opacity", 0);
     });
 
     function resetCovHighlight() {
-        lineGroups.each(function () {
-            d3.select(this).selectAll(".cov-line").attr("opacity", 0.8).attr("stroke-width", 2);
-            d3.select(this).selectAll(".cov-dot").attr("opacity", 1).attr("r", 3);
+        lineGroups.each(function (model) {
+            const isHighlighted = /median epistorm ensemble|lop.*ensemble|flusight.*ensemble/i.test(model);
+            d3.select(this).selectAll(".cov-line")
+                .attr("opacity", isHighlighted ? 1 : 0.2)
+                .attr("stroke-width", isHighlighted ? 3 : 1.5);
+            d3.select(this).selectAll(".cov-dot")
+                .attr("opacity", isHighlighted ? 1 : 0.2)
+                .attr("r", isHighlighted ? 4 : 2.5);
         });
     }
 
     // Axes
     g.append("g").attr("transform", `translate(0,${innerH})`)
-        .call(d3.axisBottom(x).tickValues(piLevels).tickFormat(d => d + "%"))
+        .call(d3.axisBottom(x).tickValues(piLevels.filter(d => d !== 95)).tickFormat(d => d + "%"))
         .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
 
     g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"))
@@ -821,6 +829,28 @@ function drawCoveragePlot() {
         .attr("x", -innerH / 2).attr("y", -36).attr("text-anchor", "middle")
         .attr("font-family", EVAL_FONT).attr("font-size", "11px").attr("fill", "#666")
         .text("Coverage %");
+
+    // Legend for highlighted models — inside the plot area (top-right)
+    const highlightedModels = ["Median Epistorm Ensemble", "LOP Epistorm Ensemble", "FluSight-ensemble"];
+    const legendG = g.append("g").attr("transform", `translate(${innerW * 0.3}, 4)`);
+    legendG.append("rect")
+        .attr("x", -8).attr("y", -10)
+        .attr("width", 176).attr("height", highlightedModels.length * 18 + 8)
+        .attr("fill", "#fff").attr("opacity", 0.85).attr("rx", 4);
+    let ly = 0;
+    highlightedModels.forEach(model => {
+        if (!modelCov[model]) return;
+        const color = MODEL_COLORS[model] || "#888";
+        const item = legendG.append("g").attr("transform", `translate(0, ${ly})`);
+        item.append("line").attr("x1", 0).attr("y1", 0).attr("x2", 16).attr("y2", 0)
+            .attr("stroke", color).attr("stroke-width", 3);
+        item.append("circle").attr("cx", 8).attr("cy", 0).attr("r", 3)
+            .attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 1);
+        item.append("text").attr("x", 20).attr("y", 4)
+            .attr("font-family", EVAL_FONT).attr("font-size", "9px").attr("fill", "#333")
+            .text(model);
+        ly += 18;
+    });
 }
 
 // Start

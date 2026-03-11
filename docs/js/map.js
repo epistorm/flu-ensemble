@@ -119,7 +119,8 @@ function getAdmissionValue(fips) {
     const refDate = AppState.currentRefDate;
     const horizon = AppState.currentHorizon;
     const estimate = AppState.currentEstimate;
-    const entry = dashboardData.data[refDate]?.[fips]?.[String(horizon)];
+    const dd = getActiveDashboardData();
+    const entry = dd.data[refDate]?.[fips]?.[String(horizon)];
     if (!entry) return null;
 
     let raw;
@@ -137,27 +138,32 @@ let _admissionsScaleCache = null;
 let _admissionsScaleKey = "";
 
 function getAdmissionsColorScale() {
-    const refDate = AppState.currentRefDate;
-    const horizon = AppState.currentHorizon;
     const rateMode = AppState.admissionsRate;
-    const key = `${refDate}-${horizon}-${rateMode}`;
+    const ensModel = AppState.ensembleModel;
+    const key = `${rateMode}-${ensModel}`;
 
     if (_admissionsScaleCache && _admissionsScaleKey === key) {
         return _admissionsScaleCache;
     }
 
-    // Always use p90 values (the highest) so the scale is the same
-    // for Most Likely, Lower End, and Upper End
+    // Compute global max across ALL reference dates and ALL horizons
+    // so the color scale is stable when changing dates or horizons
+    const dd = getActiveDashboardData();
     let allValues = [];
-    locationsData.forEach(loc => {
-        if (loc.fips === "US") return;
-        const entry = dashboardData.data[refDate]?.[loc.fips]?.[String(horizon)];
-        if (!entry) return;
-        const raw = entry.p90_value;
-        if (raw != null) {
-            allValues.push(toDisplayValue(raw, loc.fips));
+    for (const refDate of Object.keys(dd.data)) {
+        for (const fipsKey of Object.keys(dd.data[refDate])) {
+            if (fipsKey === "US") continue;
+            const fipsData = dd.data[refDate][fipsKey];
+            for (let h = 0; h <= 3; h++) {
+                const entry = fipsData[String(h)];
+                if (!entry) continue;
+                const raw = entry.p90_value;
+                if (raw != null) {
+                    allValues.push(toDisplayValue(raw, fipsKey));
+                }
+            }
         }
-    });
+    }
 
     const maxVal = d3.max(allValues) || 1;
     _admissionsScaleCache = d3.scaleSequential(d3.interpolateBlues)
@@ -172,7 +178,8 @@ function getColorForFips(fips) {
     const refDate = AppState.currentRefDate;
     const horizon = AppState.currentHorizon;
 
-    const entry = dashboardData.data[refDate]?.[fips]?.[String(horizon)];
+    const dd = getActiveDashboardData();
+    const entry = dd.data[refDate]?.[fips]?.[String(horizon)];
     if (!entry) return null;
 
     if (type === "admissions") {
@@ -236,7 +243,8 @@ async function handleMouseEnter(event, d) {
     const type = AppState.currentTab;
     const refDate = AppState.currentRefDate;
     const horizon = AppState.currentHorizon;
-    const entry = dashboardData.data[refDate]?.[fips]?.[String(horizon)];
+    const dd = getActiveDashboardData();
+    const entry = dd.data[refDate]?.[fips]?.[String(horizon)];
 
     const tooltip = d3.select("#tooltip");
     tooltip.selectAll("*").remove();
@@ -424,9 +432,10 @@ function drawAdmissionsTooltip(tooltip, fips, refDate, horizon) {
     const toVal = v => (isPerCap && pop) ? v / pop * 100000 : v;
 
     // Gather forecast data for horizons 0-3 only
+    const dd = getActiveDashboardData();
     const forecast = [];
     for (let h = 0; h <= 3; h++) {
-        const e = dashboardData.data[refDate]?.[fips]?.[String(h)];
+        const e = dd.data[refDate]?.[fips]?.[String(h)];
         if (e) {
             const med = toVal(e.median_value);
             const lo = toVal(e.p10_value);
@@ -600,7 +609,7 @@ function drawAdmissionsTooltip(tooltip, fips, refDate, horizon) {
     }
 
     // Vertical dashed line at selected forecast week
-    const selectedEntry = dashboardData.data[refDate]?.[fips]?.[String(horizon)];
+    const selectedEntry = dd.data[refDate]?.[fips]?.[String(horizon)];
     if (selectedEntry) {
         const selDate = new Date(selectedEntry.forecast_date + "T00:00:00");
         g.append("line")

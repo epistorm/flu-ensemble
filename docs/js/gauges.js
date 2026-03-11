@@ -272,7 +272,8 @@ function updateAdmissionsDist() {
     const refDate = AppState.currentRefDate;
     const horizon = AppState.currentHorizon;
 
-    const forecastEntry = dashboardData.data[refDate]?.["US"]?.[String(horizon)];
+    const dd = getActiveDashboardData();
+    const forecastEntry = dd.data[refDate]?.["US"]?.[String(horizon)];
     if (!forecastEntry) return;
 
     const forecastDate = forecastEntry.forecast_date;
@@ -294,10 +295,11 @@ function updateAdmissionsDist() {
     const weekLabel = `${monthsFmt[weekStart.getMonth()]} ${weekStart.getDate()}, ${weekStart.getFullYear()} to ${monthsFmt[fcDt.getMonth()]} ${fcDt.getDate()}, ${fcDt.getFullYear()}`;
     const unitLabel = isPerCap ? "per 100k" : "";
 
-    // Get quantile data from usTrajData
+    // Get quantile data from active trajectory data
+    const activeTraj = getActiveUsTrajData();
     let quantileRow = null;
-    if (usTrajData?.data?.[refDate]) {
-        const rdData = usTrajData.data[refDate];
+    if (activeTraj?.data?.[refDate]) {
+        const rdData = activeTraj.data[refDate];
         const dateIdx = rdData.dates.indexOf(forecastDate);
         if (dateIdx >= 0) {
             quantileRow = {};
@@ -337,11 +339,11 @@ function updateAdmissionsDist() {
         return 0.5;
     }
 
-    // Create bins: divide the range into ~8 equal-width bins
+    // Create bins: divide the range into 6 equal-width bins
     const minVal = qPoints[0].value;
     const maxVal = qPoints[qPoints.length - 1].value;
     const range = maxVal - minVal;
-    const nBins = 8;
+    const nBins = 6;
     const binWidth = range / nBins;
 
     const bins = [];
@@ -377,7 +379,7 @@ function updateAdmissionsDist() {
         .attr("font-size", "10px")
         .attr("font-weight", "600")
         .attr("fill", "#555")
-        .text("Weekly Hospitalizations Forecast: United States");
+        .text(`Weekly Hospitalizations Forecast: United States (${AppState.ensembleModel === "lop" ? "LOP" : "Median"} Ensemble)`);
 
     svg.append("text")
         .attr("x", 0)
@@ -453,7 +455,7 @@ function updateAdmissionsDist() {
         .attr("font-family", "Helvetica Neue, Arial, sans-serif")
         .attr("font-size", "10px")
         .attr("fill", "#555")
-        .html(`Median: <tspan font-weight="700">${fmtK(medianVal)}</tspan>`);
+        .html(`Highlighted bar contains the median forecast: <tspan font-weight="700">${fmtK(medianVal)}</tspan>`);
 }
 
 // --- Enhanced overview text ---
@@ -464,7 +466,8 @@ function updateOverviewText() {
     const tab = AppState.currentTab;
 
     const refDt = new Date(refDate + "T00:00:00");
-    const horizonData = dashboardData.data[refDate];
+    const dd = getActiveDashboardData();
+    const horizonData = dd.data[refDate];
     if (!horizonData) return;
 
     // Compute forecast week dates (horizon h maps to refDate + h weeks)

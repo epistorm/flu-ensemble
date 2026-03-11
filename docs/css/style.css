@@ -457,6 +457,34 @@ h1 {
     font-weight: 600;
 }
 
+/* --- Ensemble Toggle (Median / LOP) --- */
+.ensemble-btn {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border: none;
+    background: #fff;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.ensemble-btn:first-child {
+    border-right: 1px solid #e8e8e8;
+}
+
+.ensemble-btn:hover {
+    background: #fafafa;
+    color: #333;
+}
+
+.ensemble-btn.active {
+    background: #f0f0f0;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
 /* --- Gauges Card --- */
 .gauges-overview {
     font-family: "Helvetica Neue", Arial, sans-serif;
@@ -1964,10 +1992,14 @@ h1 {
     font-weight: 600;
 }
 
-.eval-boxplot-area svg,
+.eval-boxplot-area svg {
+    width: 100%;
+    aspect-ratio: 540 / 440;
+}
+
 .eval-coverage-area svg {
     width: 100%;
-    height: auto;
+    aspect-ratio: 440 / 470;
 }
 
 @media (max-width: 900px) {
