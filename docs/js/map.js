@@ -1,7 +1,7 @@
 // US Choropleth Map with rich tooltip bar plots
 
 const MAP_WIDTH = 800;
-const MAP_HEIGHT = 480;
+const MAP_HEIGHT = 440;
 
 let mapSvg, mapPath, stateFeatures;
 let fipsToName = {};
@@ -140,20 +140,23 @@ let _admissionsScaleKey = "";
 function getAdmissionsColorScale() {
     const rateMode = AppState.admissionsRate;
     const ensModel = AppState.ensembleModel;
-    const key = `${rateMode}-${ensModel}`;
+    const refDate = AppState.currentRefDate;
+    const key = `${rateMode}-${ensModel}-${refDate}`;
 
     if (_admissionsScaleCache && _admissionsScaleKey === key) {
         return _admissionsScaleCache;
     }
 
-    // Compute global max across ALL reference dates and ALL horizons
-    // so the color scale is stable when changing dates or horizons
+    // Compute max across all horizons for the current reference date
+    // so the color scale adapts to each forecast date but stays
+    // consistent when switching horizons within the same date
     const dd = getActiveDashboardData();
     let allValues = [];
-    for (const refDate of Object.keys(dd.data)) {
-        for (const fipsKey of Object.keys(dd.data[refDate])) {
+    const dateData = dd.data[refDate];
+    if (dateData) {
+        for (const fipsKey of Object.keys(dateData)) {
             if (fipsKey === "US") continue;
-            const fipsData = dd.data[refDate][fipsKey];
+            const fipsData = dateData[fipsKey];
             for (let h = 0; h <= 3; h++) {
                 const entry = fipsData[String(h)];
                 if (!entry) continue;

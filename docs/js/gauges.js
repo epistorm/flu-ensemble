@@ -233,8 +233,8 @@ function updateUSBarChart() {
             .attr("dominant-baseline", "central")
             .attr("font-family", "Helvetica Neue, Arial, sans-serif")
             .attr("font-size", "12px")
-            .attr("fill", isSelected ? "#1a1a1a" : "#666")
-            .attr("font-weight", isSelected ? "700" : "400")
+            .attr("fill", "#666")
+            .attr("font-weight", "400")
             .text(labels[cat]);
 
         // Bar
@@ -245,8 +245,8 @@ function updateUSBarChart() {
                 .attr("width", barW)
                 .attr("height", rowH - 8)
                 .attr("fill", colors[cat])
-                .attr("stroke", isSelected ? "#1a1a1a" : (needsStroke ? "#ccc" : "none"))
-                .attr("stroke-width", isSelected ? 1.5 : 0.5)
+                .attr("stroke", needsStroke ? "#ccc" : "none")
+                .attr("stroke-width", 0.5)
                 .attr("rx", 2);
         }
 
@@ -361,8 +361,8 @@ function updateAdmissionsDist() {
     // Chart dimensions
     const chartW = 320;
     const margin = { top: 38, right: 10, bottom: 32, left: 10 };
-    const barH = 18;
-    const barGap = 2;
+    const barH = 30;
+    const barGap = 3;
     const innerH = nBins * (barH + barGap);
     const chartH = margin.top + innerH + margin.bottom;
 
@@ -399,7 +399,6 @@ function updateAdmissionsDist() {
     bins.forEach((bin, i) => {
         const y = i * (barH + barGap);
         const barW = Math.max(1, (bin.prob / maxProb) * barMaxW);
-        const isMedianBin = medianVal >= bin.lo && medianVal <= bin.hi;
         const pct = Math.round(bin.prob * 100);
         const pctText = pct < 1 ? (bin.prob > 0 ? "<1%" : "0%") : `${pct}%`;
 
@@ -409,21 +408,9 @@ function updateAdmissionsDist() {
             .attr("y", y)
             .attr("width", barW)
             .attr("height", barH)
-            .attr("fill", isMedianBin ? "#4682B4" : "#6faed0")
-            .attr("opacity", isMedianBin ? 0.9 : 0.6)
+            .attr("fill", "#6faed0")
+            .attr("opacity", 0.6)
             .attr("rx", 2);
-
-        if (isMedianBin) {
-            g.append("rect")
-                .attr("x", 0)
-                .attr("y", y)
-                .attr("width", barW)
-                .attr("height", barH)
-                .attr("fill", "none")
-                .attr("stroke", "#1a1a1a")
-                .attr("stroke-width", 1.5)
-                .attr("rx", 2);
-        }
 
         // Bin range label
         g.append("text")
@@ -444,7 +431,7 @@ function updateAdmissionsDist() {
             .attr("font-family", "Helvetica Neue, Arial, sans-serif")
             .attr("font-size", "11px")
             .attr("fill", "#333")
-            .attr("font-weight", isMedianBin ? "700" : "500")
+            .attr("font-weight", "500")
             .text(pctText);
     });
 
@@ -455,7 +442,8 @@ function updateAdmissionsDist() {
         .attr("font-family", "Helvetica Neue, Arial, sans-serif")
         .attr("font-size", "10px")
         .attr("fill", "#555")
-        .html(`Highlighted bar contains the median forecast: <tspan font-weight="700">${fmtK(medianVal)}</tspan>`);
+        .html(`Median forecast: <tspan font-weight="700">${fmtK(medianVal)}</tspan>`);
+
 }
 
 // --- Enhanced overview text ---

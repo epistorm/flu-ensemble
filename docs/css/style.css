@@ -1126,6 +1126,49 @@ h1 {
     border-radius: 1px;
 }
 
+.traj-ensemble-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 16px;
+}
+
+.traj-ensemble-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+}
+
+.traj-ensemble-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.traj-ensemble-btn:first-child {
+    border-radius: 4px 0 0 4px;
+}
+
+.traj-ensemble-btn:last-child {
+    border-radius: 0 4px 4px 0;
+    border-left: none;
+}
+
+.traj-ensemble-btn:hover {
+    background: #f0f0f0;
+}
+
+.traj-ensemble-btn.active {
+    background: #4a7fb5;
+    color: #fff;
+    border-color: #4a7fb5;
+}
+
 .traj-chart-container {
     position: relative;
     flex: 1;
@@ -1602,6 +1645,34 @@ h1 {
     line-height: 1.5;
 }
 
+.eval-insights {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 14px;
+}
+
+.eval-reset-loc-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    color: #4682B4;
+    font-weight: 500;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.eval-reset-loc-btn:hover {
+    background: #f0f0f0;
+    text-decoration: underline;
+}
+
 /* --- Top section: map + controls/time series --- */
 
 .eval-top-card {
@@ -1712,6 +1783,7 @@ h1 {
 .eval-map-container {
     flex: 1;
     min-width: 0;
+    position: relative;
 }
 
 .eval-map-container svg {

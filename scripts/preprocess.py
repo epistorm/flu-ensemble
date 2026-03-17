@@ -397,11 +397,33 @@ def main():
 
     # --- Dashboard data (LOP ensemble) ---
     lop_quant_path = DATA_DIR / "quantile_ensemble_LOP.pq"
-    if lop_quant_path.exists() and not categorical_ensemble.empty and not activity_ensemble.empty:
+    lop_cat_path = DATA_DIR / "categorical_ensemble_LOP.pq"
+    lop_act_path = DATA_DIR / "activity_level_ensemble_LOP.pq"
+
+    if lop_quant_path.exists():
         lop_quant = pd.read_parquet(lop_quant_path)
         lop_quant['location'] = lop_quant['location'].astype(str)
-        export_dashboard_data(categorical_ensemble, activity_ensemble, lop_quant, locations,
-                              output_name="dashboard_data_lop.json")
+
+        # Use LOP-specific categorical/activity data if available, else fall back to Median
+        if lop_cat_path.exists():
+            lop_cat = pd.read_parquet(lop_cat_path)
+            lop_cat['location'] = lop_cat['location'].astype(str)
+        else:
+            print("  WARNING: LOP categorical data not found, using Median categorical data")
+            lop_cat = categorical_ensemble
+
+        if lop_act_path.exists():
+            lop_act = pd.read_parquet(lop_act_path)
+            lop_act['location'] = lop_act['location'].astype(str)
+        else:
+            print("  WARNING: LOP activity data not found, using Median activity data")
+            lop_act = activity_ensemble
+
+        if not lop_cat.empty and not lop_act.empty:
+            export_dashboard_data(lop_cat, lop_act, lop_quant, locations,
+                                  output_name="dashboard_data_lop.json")
+        else:
+            print("\nWARNING: Missing categorical or activity data, skipping dashboard_data_lop.json")
     else:
         print("\nWARNING: LOP quantile data not found, skipping dashboard_data_lop.json")
 

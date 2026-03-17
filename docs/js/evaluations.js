@@ -16,6 +16,7 @@ let evalAgg = "last4";           // "season", "last2", "last4"
 let evalSelectedHorizons = null; // null = all, or Set of ints
 let evalBoxLogScale = false;
 let evalHoveredFips = null;      // null = show US
+let evalLockedFips = null;       // clicked/locked state, null = none
 
 const EVAL_MAP_W = 560;
 const EVAL_MAP_H = 350;
@@ -175,6 +176,52 @@ function updateAll() {
     drawHoverTimeSeries(evalHoveredFips); // null = US
     drawBoxPlot();
     drawCoveragePlot();
+    updateInsights();
+}
+
+function updateInsights() {
+    const el = document.getElementById("eval-insights");
+    if (!el) return;
+
+    const model = evalSelectedModel;
+    const loc = evalLockedFips || evalHoveredFips || "US";
+    const locName = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
+    const piLevels = evalCovMeta.pi_levels;
+    const aggLabel = evalAgg === "season" ? "the full season" : evalAgg === "last2" ? "the last 2 weeks" : "the last 4 weeks";
+
+    // WIS ratio for selected model + location
+    const filteredWis = filterRows(evalWisRows).filter(r => r[0] === model && r[1] === loc);
+    let wisLine = "";
+    if (filteredWis.length > 0) {
+        let sumWis = 0, sumBase = 0;
+        for (const r of filteredWis) { sumWis += r[4]; sumBase += r[5]; }
+        if (sumBase > 0) {
+            const ratio = sumWis / sumBase;
+            const color = ratio < 1.0 ? "#2a9d8f" : "#e9a83a";
+            const pct = Math.abs((1 - ratio) * 100).toFixed(1);
+            const dir = ratio < 1.0 ? "better" : "worse";
+            wisLine = `Over ${aggLabel}, <strong>${model}</strong> has a WIS ratio of ` +
+                `<span style="color:${color};font-weight:700">${ratio.toFixed(3)}</span> in ` +
+                `<strong>${locName}</strong> (${pct}% ${dir} than baseline).`;
+        }
+    }
+
+    // Coverage for selected model + location
+    const pi50Idx = piLevels.indexOf(50);
+    const pi95Idx = piLevels.indexOf(95);
+    const filteredCov = filterRows(evalCovRows).filter(r => r[0] === model && r[1] === loc);
+    let covLine = "";
+    if (filteredCov.length > 0 && pi50Idx >= 0 && pi95Idx >= 0) {
+        let s50 = 0, s95 = 0;
+        for (const r of filteredCov) { s50 += r[4 + pi50Idx]; s95 += r[4 + pi95Idx]; }
+        const c50 = (s50 / filteredCov.length * 100).toFixed(0);
+        const c95 = (s95 / filteredCov.length * 100).toFixed(0);
+        const d95 = Math.abs(s95 / filteredCov.length * 100 - 95);
+        const cal = d95 <= 3 ? "well calibrated" : (s95 / filteredCov.length * 100 > 95 ? "slightly wide" : "slightly narrow");
+        covLine = `Prediction intervals are <strong>${cal}</strong> (50% PI: ${c50}%, 95% PI: ${c95}%).`;
+    }
+
+    el.innerHTML = [wisLine, covLine].filter(Boolean).join(" ") || "";
 }
 
 // ====================== CONTROLS ======================
@@ -245,6 +292,17 @@ function setupEvalControls() {
             drawBoxPlot();
         });
     });
+
+    // Reset location button
+    const resetBtn = document.getElementById("eval-reset-loc");
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            evalLockedFips = null;
+            drawHoverTimeSeries(null);
+            updateInsights();
+            drawEvalMap(); // redraw to clear highlight
+        });
+    }
 }
 
 // ====================== MAP ======================
@@ -305,7 +363,10 @@ function drawEvalMap() {
                 .style("display", "block").style("opacity", 1)
                 .html(`<strong>${name}</strong><br>${getMetricLabel()}: ${formatMetric(val)}`);
             evalHoveredFips = fips;
-            drawHoverTimeSeries(fips);
+            if (!evalLockedFips) {
+                drawHoverTimeSeries(fips);
+                updateInsights();
+            }
         })
         .on("mousemove", (event) => {
             d3.select("#eval-tooltip")
@@ -315,10 +376,43 @@ function drawEvalMap() {
         .on("mouseleave", () => {
             d3.select("#eval-tooltip").style("display", "none").style("opacity", 0);
             evalHoveredFips = null;
-            drawHoverTimeSeries(null); // Show US
+            if (!evalLockedFips) {
+                drawHoverTimeSeries(null);
+                updateInsights();
+            }
+        })
+        .on("click", (event, d) => {
+            const fips = d.id;
+            if (evalLockedFips === fips) {
+                // Clicking same state unlocks
+                evalLockedFips = null;
+            } else {
+                evalLockedFips = fips;
+            }
+            drawHoverTimeSeries(evalLockedFips);
+            updateInsights();
+            updateLockedStateHighlight(g, states, stateValues, colorScale);
         });
 
+    updateLockedStateHighlight(g, states, stateValues, colorScale);
     drawEvalLegend(colorScale);
+}
+
+function updateLockedStateHighlight(g, states, stateValues, colorScale) {
+    g.selectAll("path").data(states)
+        .attr("stroke", d => d.id === evalLockedFips ? "#333" : "#fff")
+        .attr("stroke-width", d => d.id === evalLockedFips ? 2 : 0.5);
+
+    // Update location indicator
+    const btn = document.getElementById("eval-reset-loc");
+    if (btn) {
+        if (evalLockedFips) {
+            btn.textContent = "View US";
+            btn.style.display = "inline-block";
+        } else {
+            btn.style.display = "none";
+        }
+    }
 }
 
 function getMapColorScale(stateValues) {
@@ -404,7 +498,7 @@ function drawEvalLegend(colorScale) {
 
 // ====================== HOVER TIME SERIES ======================
 function drawHoverTimeSeries(fips) {
-    const loc = fips || "US";
+    const loc = fips || evalLockedFips || "US";
     const svg = d3.select("#eval-ts-chart")
         .attr("viewBox", `0 0 ${EVAL_TS_W} ${EVAL_TS_H}`)
         .attr("preserveAspectRatio", "xMidYMid meet");

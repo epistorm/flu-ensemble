@@ -72,10 +72,10 @@ const ACTIVITY_DESCRIPTIONS = {
 
 // Semi-transparent activity colors for chart band overlay (less fading)
 const ACTIVITY_BAND_COLORS = {
-    low: "rgba(228, 247, 238, 0.55)",
-    moderate: "rgba(156, 216, 211, 0.45)",
-    high: "rgba(75, 154, 193, 0.35)",
-    very_high: "rgba(77, 104, 145, 0.35)"
+    low: "rgba(228, 247, 238, 0.3)",
+    moderate: "rgba(156, 216, 211, 0.25)",
+    high: "rgba(75, 154, 193, 0.2)",
+    very_high: "rgba(77, 104, 145, 0.2)"
 };
 
 // Historical season colors for "Add Context" (more distinct)

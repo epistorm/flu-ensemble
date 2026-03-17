@@ -21,7 +21,7 @@ let activityThresholds = null;
 
 // Get the active dashboard data based on selected ensemble model
 function getActiveDashboardData() {
-    if (AppState.currentTab === "admissions" && AppState.ensembleModel === "lop" && dashboardDataLOP) {
+    if (AppState.ensembleModel === "lop" && dashboardDataLOP) {
         return dashboardDataLOP;
     }
     return dashboardData;
@@ -29,7 +29,7 @@ function getActiveDashboardData() {
 
 // Get the active US trajectory data based on selected ensemble model
 function getActiveUsTrajData() {
-    if (AppState.currentTab === "admissions" && AppState.ensembleModel === "lop" && usTrajDataLOP) {
+    if (AppState.ensembleModel === "lop" && usTrajDataLOP) {
         return usTrajDataLOP;
     }
     return usTrajData;

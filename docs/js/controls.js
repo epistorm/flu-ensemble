@@ -46,6 +46,9 @@ function initEnsembleToggle() {
         AppState.ensembleModel = model;
         d3.selectAll(".ensemble-btn").classed("active", false);
         d3.select(this).classed("active", true);
+        // Sync trajectory ensemble toggle
+        d3.selectAll(".traj-ensemble-btn").classed("active", false);
+        d3.select(`.traj-ensemble-btn[data-ensemble="${model}"]`).classed("active", true);
         updateAll();
         // Reload trajectory chart with the selected ensemble's data
         const fips = d3.select("#traj-location").property("value");
@@ -66,7 +69,7 @@ function updateRateToggleVisibility() {
 function updateEnsembleToggleVisibility() {
     const toggle = document.getElementById("ensemble-toggle");
     if (toggle) {
-        toggle.style.display = AppState.currentTab === "admissions" ? "block" : "none";
+        toggle.style.display = "block";
     }
 }
 
