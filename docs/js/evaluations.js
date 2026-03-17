@@ -118,6 +118,29 @@ function getMetricLabel() {
     return "";
 }
 
+/** Get contextual label + color for a metric value */
+function getMetricContext(val) {
+    if (val == null) return null;
+    if (evalMetric === "wis_relative") {
+        if (val < 0.8) return { label: "Strong — well below baseline", color: "#2a9d8f" };
+        if (val < 1.0) return { label: "Good — below baseline", color: "#2a9d8f" };
+        if (val < 1.2) return { label: "Near baseline", color: "#e9a83a" };
+        if (val < 1.5) return { label: "Above baseline", color: "#e07b54" };
+        return { label: "Well above baseline", color: "#c44e52" };
+    }
+    if (evalMetric === "wis_raw") {
+        // Compare to baseline WIS for context
+        return null; // Raw WIS scale varies too much by location; no universal thresholds
+    }
+    // Coverage metrics
+    const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+    const actual = val;
+    const diff = actual - nominal;
+    if (Math.abs(diff) <= 0.05) return { label: "Well calibrated", color: "#2a9d8f" };
+    if (diff > 0.05) return { label: "Underconfident — intervals too wide", color: "#2a9d8f" };
+    return { label: "Overconfident — intervals too narrow", color: "#2C5F8A" };
+}
+
 // ====================== INIT ======================
 async function initEvaluations() {
     try {
@@ -362,9 +385,11 @@ function drawEvalMap() {
             const fips = d.id;
             const val = stateValues[fips];
             const name = evalFipsToName[fips] || fips;
+            const context = getMetricContext(val);
             d3.select("#eval-tooltip")
                 .style("display", "block").style("opacity", 1)
-                .html(`<strong>${name}</strong><br>${getMetricLabel()}: ${formatMetric(val)}`);
+                .html(`<strong>${name}</strong><br>${getMetricLabel()}: ${formatMetric(val)}` +
+                    (context ? `<br><span style="color:${context.color};font-weight:600">${context.label}</span>` : ""));
             evalHoveredFips = fips;
             if (!evalLockedFips) {
                 drawHoverTimeSeries(fips);
@@ -433,16 +458,18 @@ function getMapColorScale(stateValues) {
             .domain([0, Math.max(maxVal, 10)])
             .interpolator(d3.interpolateRgbBasis(["#ffffff", "#d0dff0", "#7BAFD4", "#4A7FB5", "#2C5F8A"]));
     }
-    // Coverage: 0–100%, sequential white to blue — higher coverage = darker blue
-    return d3.scaleSequential()
-        .domain([0, 1.0])
-        .interpolator(d3.interpolateRgbBasis(["#ffffff", "#d0dff0", "#7BAFD4", "#4A7FB5", "#2C5F8A"]));
+    // Coverage: blue diverging centered at nominal level (50% or 95%)
+    const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+    return d3.scaleDiverging()
+        .domain([nominal - 0.3, nominal, nominal + 0.3])
+        .interpolator(d3.interpolateRgbBasis(["#2C5F8A", "#ffffff", "#2a9d8f"]));
 }
 
 function clampForScale(val) {
     if (evalMetric === "wis_relative") return Math.max(0.3, Math.min(3.0, val));
     if (evalMetric === "wis_raw") return Math.max(0, val);
-    return Math.max(0, Math.min(1.0, val));
+    const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+    return Math.max(nominal - 0.3, Math.min(nominal + 0.3, val));
 }
 
 function drawEvalLegend(colorScale) {
@@ -461,7 +488,11 @@ function drawEvalLegend(colorScale) {
     let domainMin, domainMax;
     if (evalMetric === "wis_relative") { domainMin = 0.3; domainMax = 3.0; }
     else if (evalMetric === "wis_raw") { domainMin = colorScale.domain()[0]; domainMax = colorScale.domain()[1]; }
-    else { domainMin = 0; domainMax = 1.0; }
+    else {
+        const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+        domainMin = nominal - 0.3;
+        domainMax = nominal + 0.3;
+    }
 
     for (let i = 0; i <= 20; i++) {
         const t = i / 20;
@@ -480,7 +511,8 @@ function drawEvalLegend(colorScale) {
         tickVals = d3.scaleLinear().domain([domainMin, domainMax]).ticks(5);
         tickFmt = d3.format(".0f");
     } else {
-        tickVals = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+        const nom = evalMetric === "cov50" ? 0.50 : 0.95;
+        tickVals = [nom - 0.3, nom - 0.15, nom, nom + 0.15, nom + 0.3].filter(v => v >= 0 && v <= 1.0);
         tickFmt = v => (v * 100).toFixed(0) + "%";
     }
 
