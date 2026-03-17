@@ -112,31 +112,36 @@
             </div>
         </div>
 
-        <!-- Bottom section: box plot + coverage -->
+        <!-- Bottom section: box plot + coverage (collapsible) -->
         <hr class="section-divider">
-        <h2 class="section-title">Model Comparison</h2>
-        <p class="eval-subtitle">WIS relative to baseline and prediction interval coverage across all models</p>
+        <details class="eval-details" id="eval-details">
+            <summary class="eval-details-summary">
+                <h2 class="section-title" style="display:inline">Model Comparison</h2>
+                <span class="eval-details-hint">Click to expand</span>
+            </summary>
+            <p class="eval-subtitle">WIS relative to baseline and prediction interval coverage across all models</p>
 
-        <div class="card eval-bottom-card">
-            <div class="eval-bottom-row">
-                <!-- Left: Box plot -->
-                <div class="eval-boxplot-area">
-                    <div class="eval-boxplot-header">
-                        <span class="eval-chart-title">Weighted Interval Score / Baseline</span>
-                        <div class="seg-group eval-log-toggle" id="eval-log-toggle">
-                            <button class="seg-btn eval-log-btn active" data-scale="linear">Linear</button>
-                            <button class="seg-btn eval-log-btn" data-scale="log">Use Log Scale</button>
+            <div class="card eval-bottom-card">
+                <div class="eval-bottom-row">
+                    <!-- Left: Box plot -->
+                    <div class="eval-boxplot-area">
+                        <div class="eval-boxplot-header">
+                            <span class="eval-chart-title">Weighted Interval Score / Baseline</span>
+                            <div class="seg-group eval-log-toggle" id="eval-log-toggle">
+                                <button class="seg-btn eval-log-btn active" data-scale="linear">Linear</button>
+                                <button class="seg-btn eval-log-btn" data-scale="log">Use Log Scale</button>
+                            </div>
                         </div>
+                        <svg id="eval-boxplot"></svg>
                     </div>
-                    <svg id="eval-boxplot"></svg>
-                </div>
-                <!-- Right: Coverage plot -->
-                <div class="eval-coverage-area">
-                    <span class="eval-chart-title">Coverage</span>
-                    <svg id="eval-coverage"></svg>
+                    <!-- Right: Coverage plot -->
+                    <div class="eval-coverage-area">
+                        <span class="eval-chart-title">Coverage</span>
+                        <svg id="eval-coverage"></svg>
+                    </div>
                 </div>
             </div>
-        </div>
+        </details>
     </main>
 
     <footer class="funding-footer">

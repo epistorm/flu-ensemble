@@ -1673,6 +1673,45 @@ h1 {
     text-decoration: underline;
 }
 
+.eval-details {
+    margin-bottom: 24px;
+}
+
+.eval-details-summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.eval-details-summary::-webkit-details-marker {
+    display: none;
+}
+
+.eval-details-summary::before {
+    content: "▶";
+    font-size: 11px;
+    color: #888;
+    transition: transform 0.15s;
+}
+
+.eval-details[open] > .eval-details-summary::before {
+    transform: rotate(90deg);
+}
+
+.eval-details-hint {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    color: #999;
+    font-weight: 400;
+}
+
+.eval-details[open] .eval-details-hint {
+    display: none;
+}
+
 /* --- Top section: map + controls/time series --- */
 
 .eval-top-card {

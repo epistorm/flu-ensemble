@@ -17,6 +17,7 @@ let evalSelectedHorizons = null; // null = all, or Set of ints
 let evalBoxLogScale = false;
 let evalHoveredFips = null;      // null = show US
 let evalLockedFips = null;       // clicked/locked state, null = none
+let evalTargetData = null;       // hospitalization target data keyed by location
 
 const EVAL_MAP_W = 560;
 const EVAL_MAP_H = 350;
@@ -120,11 +121,12 @@ function getMetricLabel() {
 // ====================== INIT ======================
 async function initEvaluations() {
     try {
-        const [wis, coverage, locations, topo] = await Promise.all([
+        const [wis, coverage, locations, topo, targetData] = await Promise.all([
             d3.json("data/eval_wis.json"),
             d3.json("data/eval_coverage.json"),
             d3.json("data/locations.json"),
-            d3.json("data/us-states.json")
+            d3.json("data/us-states.json"),
+            d3.json("data/target_data.json")
         ]);
 
         evalWisRows = wis.rows;
@@ -133,6 +135,7 @@ async function initEvaluations() {
         evalCovMeta = { models: coverage.models, pi_levels: coverage.pi_levels };
         evalLocations = locations;
         evalTopoData = topo;
+        evalTargetData = targetData;
 
         locations.forEach(loc => {
             evalFipsToName[loc.fips] = loc.name;
@@ -498,27 +501,141 @@ function drawEvalLegend(colorScale) {
 
 // ====================== HOVER TIME SERIES ======================
 function drawHoverTimeSeries(fips) {
+    const isCovMetric = evalMetric === "cov50" || evalMetric === "cov95";
+    if (isCovMetric) {
+        drawHoverCoverageCalibration(fips);
+    } else {
+        drawHoverWisTimeSeries(fips);
+    }
+}
+
+function drawHoverCoverageCalibration(fips) {
     const loc = fips || evalLockedFips || "US";
     const svg = d3.select("#eval-ts-chart")
         .attr("viewBox", `0 0 ${EVAL_TS_W} ${EVAL_TS_H}`)
         .attr("preserveAspectRatio", "xMidYMid meet");
     svg.selectAll("*").remove();
 
-    const margin = { top: 22, right: 12, bottom: 30, left: 40 };
+    const margin = { top: 22, right: 12, bottom: 34, left: 44 };
     const innerW = EVAL_TS_W - margin.left - margin.right;
     const innerH = EVAL_TS_H - margin.top - margin.bottom;
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const tooltip = d3.select("#eval-tooltip");
     const name = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
-    const isCovMetric = evalMetric === "cov50" || evalMetric === "cov95";
+    const piLevels = evalCovMeta.pi_levels;
 
-    // Get rows for this model + location
-    const locWisRows = evalWisRows.filter(r =>
+    // Title
+    svg.append("text").attr("x", margin.left).attr("y", 14)
+        .attr("font-family", EVAL_FONT).attr("font-size", "10px")
+        .attr("font-weight", "600").attr("fill", "#555")
+        .text(`Coverage Calibration: ${name}`);
+
+    // Get coverage rows for this model + location
+    const locCovRows = evalCovRows.filter(r =>
         r[0] === evalSelectedModel && r[1] === loc &&
         (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3]))
     );
-    const locCovRows = evalCovRows.filter(r =>
+
+    if (locCovRows.length === 0) {
+        g.append("text").attr("x", innerW / 2).attr("y", innerH / 2)
+            .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+            .attr("font-size", "11px").attr("fill", "#999")
+            .text("Insufficient data");
+        return;
+    }
+
+    // Compute mean coverage per PI level
+    const meanCov = piLevels.map((pi, idx) => {
+        let sum = 0;
+        for (const r of locCovRows) sum += r[4 + idx];
+        return { pi, actual: sum / locCovRows.length };
+    });
+
+    const x = d3.scaleLinear().domain([0, 100]).range([0, innerW]);
+    const y = d3.scaleLinear().domain([0, 100]).range([innerH, 0]);
+
+    // Grid
+    y.ticks(5).forEach(t => {
+        g.append("line").attr("x1", 0).attr("y1", y(t)).attr("x2", innerW).attr("y2", y(t))
+            .attr("stroke", "#eee").attr("stroke-width", 0.5);
+    });
+
+    // Ideal diagonal
+    g.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(100)).attr("y2", y(100))
+        .attr("stroke", "#999").attr("stroke-width", 1.5).attr("stroke-dasharray", "6,4");
+
+    // Highlight selected PI level
+    const selectedPi = evalMetric === "cov50" ? 50 : 95;
+    g.append("line")
+        .attr("x1", x(selectedPi)).attr("y1", y(0)).attr("x2", x(selectedPi)).attr("y2", y(100))
+        .attr("stroke", "#4682B4").attr("stroke-width", 1).attr("stroke-dasharray", "3,3").attr("opacity", 0.5);
+
+    // Line
+    const lineColor = MODEL_COLORS[evalSelectedModel] || "#4682B4";
+    const lineGen = d3.line().x(d => x(d.pi)).y(d => y(d.actual * 100));
+    g.append("path").datum(meanCov).attr("d", lineGen)
+        .attr("fill", "none").attr("stroke", lineColor).attr("stroke-width", 2);
+
+    // Dots — larger for selected PI
+    g.selectAll(".cal-dot").data(meanCov).join("circle")
+        .attr("cx", d => x(d.pi)).attr("cy", d => y(d.actual * 100))
+        .attr("r", d => d.pi === selectedPi ? 5 : 3)
+        .attr("fill", lineColor).attr("stroke", "#fff").attr("stroke-width", 1);
+
+    // Hover
+    meanCov.forEach(d => {
+        g.append("circle")
+            .attr("cx", x(d.pi)).attr("cy", y(d.actual * 100))
+            .attr("r", 8).attr("fill", "transparent").style("cursor", "pointer")
+            .on("mouseenter", (event) => {
+                const diff = (d.actual * 100 - d.pi).toFixed(1);
+                tooltip.style("display", "block").style("opacity", 1).html(
+                    `<strong>${name}</strong><br>${d.pi}% PI: ${(d.actual * 100).toFixed(1)}% actual<br>Diff: ${diff}%`
+                );
+            })
+            .on("mousemove", (event) => {
+                tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
+            })
+            .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
+    });
+
+    // Axes
+    g.append("g").attr("transform", `translate(0,${innerH})`)
+        .call(d3.axisBottom(x).tickValues([0, 20, 40, 60, 80, 100]).tickFormat(d => d + "%"))
+        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "8px");
+
+    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"))
+        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "8px");
+
+    // Axis labels
+    g.append("text").attr("x", innerW / 2).attr("y", innerH + 28)
+        .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+        .attr("font-size", "9px").attr("fill", "#666").text("Prediction Interval");
+
+    g.append("text").attr("transform", "rotate(-90)")
+        .attr("x", -innerH / 2).attr("y", -34).attr("text-anchor", "middle")
+        .attr("font-family", EVAL_FONT).attr("font-size", "9px").attr("fill", "#666")
+        .text("Actual Coverage");
+}
+
+function drawHoverWisTimeSeries(fips) {
+    const loc = fips || evalLockedFips || "US";
+    const svg = d3.select("#eval-ts-chart")
+        .attr("viewBox", `0 0 ${EVAL_TS_W} ${EVAL_TS_H}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+    svg.selectAll("*").remove();
+
+    const margin = { top: 22, right: 40, bottom: 30, left: 40 };
+    const innerW = EVAL_TS_W - margin.left - margin.right;
+    const innerH = EVAL_TS_H - margin.top - margin.bottom;
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const tooltip = d3.select("#eval-tooltip");
+    const name = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
+
+    // Get rows for this model + location
+    const locWisRows = evalWisRows.filter(r =>
         r[0] === evalSelectedModel && r[1] === loc &&
         (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3]))
     );
@@ -529,19 +646,14 @@ function drawHoverTimeSeries(fips) {
         if (!byDateWis[r[2]]) byDateWis[r[2]] = [];
         byDateWis[r[2]].push(r);
     }
-    const byDateCov = {};
-    for (const r of locCovRows) {
-        if (!byDateCov[r[2]]) byDateCov[r[2]] = [];
-        byDateCov[r[2]].push(r);
-    }
 
-    const allDates = [...new Set([...Object.keys(byDateWis), ...Object.keys(byDateCov)])].sort();
+    const allDates = Object.keys(byDateWis).sort();
     const piLevels = evalCovMeta.pi_levels;
 
     const data = allDates.map(date => ({
         date: new Date(date + "T00:00:00"),
         dateStr: date,
-        value: getMetricValue(byDateWis[date] || [], byDateCov[date] || [], piLevels)
+        value: getMetricValue(byDateWis[date] || [], [], piLevels)
     })).filter(d => d.value != null).sort((a, b) => a.date - b.date);
 
     // Title
@@ -559,37 +671,59 @@ function drawHoverTimeSeries(fips) {
     }
 
     const x = d3.scaleTime().domain(d3.extent(data, d => d.date)).range([0, innerW]);
-    let yDomain;
-    if (isCovMetric) {
-        yDomain = [0, 1.05];
-    } else {
-        const yMax = Math.max(d3.max(data, d => d.value), evalMetric === "wis_relative" ? 1.5 : 10);
-        yDomain = [0, yMax * 1.1];
-    }
-    const y = d3.scaleLinear().domain(yDomain).range([innerH, 0]);
+    const yMax = Math.max(d3.max(data, d => d.value), evalMetric === "wis_relative" ? 1.5 : 10);
+    const y = d3.scaleLinear().domain([0, yMax * 1.1]).range([innerH, 0]);
 
+    // Hospitalization background area
+    const hospData = getHospDataForDateRange(loc, d3.extent(data, d => d.date));
+    if (hospData.length > 1) {
+        const hospMax = d3.max(hospData, d => d.value);
+        const yHosp = d3.scaleLinear().domain([0, hospMax * 1.1]).range([innerH, 0]);
+
+        const area = d3.area()
+            .x(d => x(d.date))
+            .y0(innerH)
+            .y1(d => yHosp(d.value));
+
+        g.append("path").datum(hospData).attr("d", area)
+            .attr("fill", "#ccc").attr("opacity", 0.3);
+
+        // Right y-axis for hospitalizations
+        const yHospAxis = g.append("g").attr("transform", `translate(${innerW}, 0)`)
+            .call(d3.axisRight(yHosp).ticks(4).tickFormat(d3.format(",.0f")));
+        yHospAxis.selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "8px").attr("fill", "#999");
+        yHospAxis.select(".domain").attr("stroke", "#ccc");
+
+        // Right y-axis label
+        g.append("text").attr("transform", "rotate(90)")
+            .attr("x", innerH / 2).attr("y", -innerW - 30)
+            .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+            .attr("font-size", "8px").attr("fill", "#999").text("Hospitalizations");
+    }
+
+    // Left y-axis
+    const yFmt = evalMetric === "wis_raw" ? d3.format(".0f") : d3.format(".1f");
+    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(yFmt))
+        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
+
+    // Left y-axis label
+    g.append("text").attr("transform", "rotate(-90)")
+        .attr("x", -innerH / 2).attr("y", -30)
+        .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+        .attr("font-size", "8px").attr("fill", "#666").text(getMetricLabel());
+
+    // X axis
     g.append("g").attr("transform", `translate(0,${innerH})`)
         .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")))
         .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
 
-    const yFmt = isCovMetric ? (d => (d * 100).toFixed(0) + "%") : (evalMetric === "wis_raw" ? d3.format(".0f") : d3.format(".1f"));
-    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(yFmt))
-        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
-
-    // Reference line
+    // Reference line for WIS relative
     if (evalMetric === "wis_relative") {
         g.append("line").attr("x1", 0).attr("y1", y(1)).attr("x2", innerW).attr("y2", y(1))
             .attr("stroke", "#aaa").attr("stroke-width", 1).attr("stroke-dasharray", "4,3");
         g.append("text").attr("x", innerW - 2).attr("y", y(1) - 4)
             .attr("text-anchor", "end").attr("font-family", EVAL_FONT)
             .attr("font-size", "8px").attr("fill", "#aaa").text("Baseline");
-    } else if (isCovMetric) {
-        const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
-        g.append("line").attr("x1", 0).attr("y1", y(nominal)).attr("x2", innerW).attr("y2", y(nominal))
-            .attr("stroke", "#aaa").attr("stroke-width", 1).attr("stroke-dasharray", "4,3");
-        g.append("text").attr("x", innerW - 2).attr("y", y(nominal) - 4)
-            .attr("text-anchor", "end").attr("font-family", EVAL_FONT)
-            .attr("font-size", "8px").attr("fill", "#aaa").text("Ideal");
     }
 
     // Highlight aggregation window
@@ -605,6 +739,7 @@ function drawHoverTimeSeries(fips) {
             .attr("opacity", 0.08);
     }
 
+    // WIS line
     const lineColor = MODEL_COLORS[evalSelectedModel] || "#4682B4";
     const line = d3.line().x(d => x(d.date)).y(d => y(d.value));
     g.append("path").datum(data).attr("d", line)
@@ -615,7 +750,26 @@ function drawHoverTimeSeries(fips) {
         .attr("r", 3).attr("fill", lineColor)
         .attr("stroke", "#fff").attr("stroke-width", 1);
 
-    // Hover overlay for tooltips on each dot
+    // Legend (top-right inside plot)
+    if (hospData.length > 1) {
+        const legendG = g.append("g").attr("transform", `translate(${innerW - 90}, 2)`);
+        legendG.append("rect").attr("x", -4).attr("y", -8).attr("width", 94).attr("height", 28)
+            .attr("fill", "#fff").attr("opacity", 0.85).attr("rx", 3);
+        // WIS line legend
+        legendG.append("line").attr("x1", 0).attr("y1", 0).attr("x2", 12).attr("y2", 0)
+            .attr("stroke", lineColor).attr("stroke-width", 2);
+        legendG.append("text").attr("x", 15).attr("y", 3)
+            .attr("font-family", EVAL_FONT).attr("font-size", "8px").attr("fill", "#333")
+            .text(evalMetric === "wis_relative" ? "WIS / Baseline" : "WIS");
+        // Hosp area legend
+        legendG.append("rect").attr("x", 0).attr("y", 8).attr("width", 12).attr("height", 6)
+            .attr("fill", "#ccc").attr("opacity", 0.5);
+        legendG.append("text").attr("x", 15).attr("y", 14)
+            .attr("font-family", EVAL_FONT).attr("font-size", "8px").attr("fill", "#999")
+            .text("Hospitalizations");
+    }
+
+    // Hover overlay
     const hoverG = g.append("g");
     data.forEach(d => {
         hoverG.append("circle")
@@ -633,6 +787,19 @@ function drawHoverTimeSeries(fips) {
             })
             .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
     });
+}
+
+/** Get hospitalization data for a location within a date range */
+function getHospDataForDateRange(loc, dateExtent) {
+    if (!evalTargetData) return [];
+    const locData = evalTargetData[loc];
+    if (!locData) return [];
+
+    const [minDate, maxDate] = dateExtent;
+    return locData
+        .map(d => ({ date: new Date(d.date + "T00:00:00"), value: d.value }))
+        .filter(d => d.date >= minDate && d.date <= maxDate && d.value != null)
+        .sort((a, b) => a.date - b.date);
 }
 
 // ====================== BOX PLOT ======================
