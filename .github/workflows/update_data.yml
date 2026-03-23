@@ -6,6 +6,10 @@ on:
 
   # Allow manual trigger
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run on'
+        default: 'clara'
 
 permissions:
   contents: write
