@@ -31,6 +31,17 @@ header {
     align-items: flex-start;
 }
 
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-logo {
+    height: 64px;
+    object-fit: contain;
+}
+
 h1 {
     font-size: 26px;
     font-weight: 700;
@@ -1235,6 +1246,20 @@ h1 {
     padding: 20px 0 10px;
     border-top: 1px solid #eee;
     margin-top: 24px;
+}
+
+.footer-logos {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    margin-bottom: 12px;
+}
+
+.footer-logo {
+    height: 48px;
+    object-fit: contain;
+    opacity: 0.7;
 }
 
 /* =============================================

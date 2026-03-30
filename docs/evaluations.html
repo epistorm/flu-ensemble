@@ -11,9 +11,12 @@
 <body>
     <header>
         <div class="header-row">
-            <div>
-                <h1>Influenza Hospitalization Forecast</h1>
-                <p class="subtitle">Epistorm Ensemble weekly forecasts</p>
+            <div class="header-brand">
+                <img src="assets/epistorm-logo-small.png" alt="Epistorm Ensemble" class="header-logo">
+                <div>
+                    <h1>Influenza Hospitalization Forecast</h1>
+                    <p class="subtitle">Epistorm Ensemble weekly forecasts</p>
+                </div>
             </div>
             <nav class="header-nav">
                 <a class="nav-link" href="index.html">Dashboard</a>
@@ -24,23 +27,8 @@
     </header>
 
     <main>
-        <div class="eval-title-row">
-            <h2 class="section-title">Model Evaluation</h2>
-            <button class="eval-info-btn" id="eval-info-btn">What is WIS?</button>
-        </div>
+        <h2 class="section-title">Model Evaluation</h2>
         <p class="eval-subtitle">Weighted Interval Score and coverage across states and forecast dates.</p>
-
-        <!-- WIS info modal -->
-        <div class="eval-modal-overlay" id="eval-modal-overlay">
-            <div class="eval-modal">
-                <button class="eval-modal-close" id="eval-modal-close">&times;</button>
-                <h3>Weighted Interval Score (WIS)</h3>
-                <p>The <strong>Weighted Interval Score</strong> is a proper scoring rule for quantile forecasts. It generalizes the absolute error to probabilistic predictions by evaluating the sharpness and calibration of prediction intervals.</p>
-                <p><strong>WIS (Raw)</strong> shows the mean Weighted Interval Score — lower is better.</p>
-                <p>The <strong>WIS ratio</strong> (WIS / Baseline) compares each model's mean WIS to the FluSight-baseline model's mean WIS over the same time period and horizons. Values below 1.0 indicate the model outperforms the baseline.</p>
-                <p><strong>Coverage</strong> measures the fraction of observations that fall within a given prediction interval. Well-calibrated models should have coverage close to the nominal level (e.g., 50% PI should cover ~50% of observations).</p>
-            </div>
-        </div>
 
         <p class="eval-insights" id="eval-insights"></p>
 
@@ -145,7 +133,11 @@
     </main>
 
     <footer class="funding-footer">
-        This work is supported by Cooperative Agreements NU38PW000005 from The Centers for Disease Control and Prevention (CDC) and CSTE and from CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.
+        <div class="footer-logos">
+            <img src="assets/epistorm-logo.png" alt="Epistorm" class="footer-logo">
+            <img src="assets/northeastern-logo.png" alt="Northeastern University" class="footer-logo">
+        </div>
+        <p>This work is supported by CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.</p>
     </footer>
 
     <!-- Tooltip -->

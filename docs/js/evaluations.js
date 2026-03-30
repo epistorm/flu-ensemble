@@ -172,7 +172,6 @@ async function initEvaluations() {
         });
 
         setupEvalControls();
-        setupEvalModal();
         updateAll();
 
     } catch (err) {
@@ -185,17 +184,6 @@ async function initEvaluations() {
     }
 }
 
-function setupEvalModal() {
-    document.getElementById("eval-info-btn").addEventListener("click", () => {
-        document.getElementById("eval-modal-overlay").classList.add("visible");
-    });
-    document.getElementById("eval-modal-close").addEventListener("click", () => {
-        document.getElementById("eval-modal-overlay").classList.remove("visible");
-    });
-    document.getElementById("eval-modal-overlay").addEventListener("click", (e) => {
-        if (e.target === e.currentTarget) e.currentTarget.classList.remove("visible");
-    });
-}
 
 function updateAll() {
     drawEvalMap();
