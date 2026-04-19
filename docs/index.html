@@ -11,9 +11,12 @@
 <body>
     <header>
         <div class="header-row">
-            <div>
-                <h1>Influenza Hospitalization Forecast</h1>
-                <p class="subtitle">Epistorm Ensemble weekly forecasts <span class="last-updated" id="last-updated"></span><button class="most-recent-btn" onclick="jumpToMostRecent()">Most Recent Forecast</button></p>
+            <div class="header-brand">
+                <img src="assets/epistorm-logo-small.png" alt="Epistorm Ensemble" class="header-logo">
+                <div>
+                    <h1>Influenza Hospitalization Forecast</h1>
+                    <p class="subtitle">Epistorm Ensemble weekly forecasts <span class="last-updated" id="last-updated"></span><button class="most-recent-btn" onclick="jumpToMostRecent()">Most Recent Forecast</button></p>
+                </div>
             </div>
             <nav class="header-nav">
                 <a class="nav-link active" href="index.html">Dashboard</a>
@@ -51,6 +54,13 @@
                         <div class="rate-toggle" id="rate-toggle" style="display:none;">
                             <button class="rate-btn active" data-rate="total">Total</button>
                             <button class="rate-btn" data-rate="percapita">Per 100k</button>
+                        </div>
+                        <div class="control-group" id="ensemble-toggle">
+                            <div class="control-title">Ensemble Method</div>
+                            <div class="rate-toggle" style="display:flex;">
+                                <button class="ensemble-btn active" data-ensemble="median">Median</button>
+                                <button class="ensemble-btn" data-ensemble="lop">LOP</button>
+                            </div>
                         </div>
                         <div class="map-trend-summary" id="map-trend-summary"></div>
                         <div class="legend-container" id="legend"></div>
@@ -97,6 +107,13 @@
                         Location
                         <select id="traj-location" class="traj-select traj-select-location"></select>
                     </label>
+                    <div class="traj-ensemble-toggle">
+                        <span class="traj-ensemble-label">Ensemble</span>
+                        <div class="rate-toggle" style="display:flex;">
+                            <button class="traj-ensemble-btn active" data-ensemble="median">Median</button>
+                            <button class="traj-ensemble-btn" data-ensemble="lop">LOP</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="traj-body">
@@ -127,7 +144,11 @@
     </main>
 
     <footer class="funding-footer">
-        This work is supported by Cooperative Agreements NU38PW000005 from The Centers for Disease Control and Prevention (CDC) and CSTE and from CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.
+        <div class="footer-logos">
+            <img src="assets/epistorm-logo.png" alt="Epistorm" class="footer-logo">
+            <img src="assets/northeastern-logo.png" alt="Northeastern University" class="footer-logo">
+        </div>
+        <p>This work is supported by CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.</p>
     </footer>
 
     <!-- Tooltip containers -->

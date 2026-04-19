@@ -22,155 +22,12 @@ class scoring_functions:
     Compute scores for forecasts.
 
     Methods:
-        timestamp_wis: Computes the WIS at each time point
-        interval_score: Computes the interval score (part of WIS)
-        coverage: Calculates coverage for a prediction interval
-        get_all_coverages: Calculates coverage for all prediction intervals
-        get_wis_scores: Calculate WIS for all models, horizons, locations, dates
-        calculate_forecast_coverage: Calculate coverage for all forecasts
+        get_wis_scores: Calculate WIS for all models, horizons, locations, dates (vectorized)
+        calculate_forecast_coverage: Calculate coverage for all forecasts (vectorized)
     """
 
-    def timestamp_wis(self, observations, predsfilt,
-                     interval_ranges=[10,20,30,40,50,60,70,80,90,95,98]):
-        """Calculate weighted interval score at a timestamp."""
-        # Get all quantiles
-        quantiles = np.array(predsfilt.sort_values(by='output_type_id').output_type_id)
-
-        qs = []
-        for q in quantiles:
-            df = predsfilt[predsfilt.output_type_id == q].sort_values(by='target_end_date')
-            val = np.array(df.value)
-            qs.append(val)
-
-        Q = np.array(qs)
-        y = np.array(observations.value)
-
-        if quantiles[11] != 0.5:
-            print(f'Warning: quantiles[11] = {quantiles[11]}, not median!')
-
-        # Calculate WIS
-        WIS = np.zeros(len(y))
-
-        for i in range(len(quantiles) // 2):
-            interval_range = 100 * (quantiles[-i-1] - quantiles[i])
-            alpha = 1 - (quantiles[-i-1] - quantiles[i])
-            IS = self.interval_score(y, Q[i], Q[-i-1], interval_range)
-            WIS += IS['interval_score'] * alpha / 2
-
-        WIS += 0.5 * np.abs(Q[11] - y)
-
-        WISlist = np.array(WIS) / (len(interval_ranges) + 0.5)
-
-        df = pd.DataFrame({
-            'Model': predsfilt.Model.unique(),
-            'location': predsfilt.location.unique(),
-            'horizon': predsfilt.horizon.unique(),
-            'reference_date': predsfilt.reference_date.unique(),
-            'target_end_date': predsfilt.target_end_date.unique(),
-            'wis': WISlist[0]
-        }, index=[0])
-
-        return df
-
-    def interval_score(self, observation, lower, upper, interval_range):
-        """Calculate interval score."""
-        if len(lower) != len(upper) or len(lower) != len(observation):
-            raise ValueError("vector shape mismatch")
-        if interval_range > 100 or interval_range < 0:
-            raise ValueError("interval range should be between 0 and 100")
-
-        obs, l, u = np.array(observation), np.array(lower), np.array(upper)
-        alpha = 1 - interval_range / 100
-
-        dispersion = u - l
-        underprediction = (2 / alpha) * (l - obs) * (obs < l)
-        overprediction = (2 / alpha) * (obs - u) * (obs > u)
-        score = dispersion + underprediction + overprediction
-
-        return {
-            'interval_score': score,
-            'dispersion': dispersion,
-            'underprediction': underprediction,
-            'overprediction': overprediction
-        }
-
-    def coverage(self, observation, lower, upper):
-        """Calculate fraction of observations within lower and upper bounds."""
-        if len(lower) != len(upper) or len(lower) != len(observation):
-            raise ValueError("vector shape mismatch")
-
-        obs, l, u = np.array(observation), np.array(lower), np.array(upper)
-        return np.mean(np.logical_and(obs >= l, obs <= u))
-
-    def get_all_coverages(self, observations, predictions,
-                         interval_ranges=[10,20,30,40,50,60,70,80,90,95,98]):
-        """Get coverages for all prediction intervals."""
-        out = dict()
-        for interval_range in interval_ranges:
-            q_low = 0.5 - interval_range / 200
-            q_upp = 0.5 + interval_range / 200
-            cov = self.coverage(
-                observations.value,
-                predictions[predictions.output_type_id == round(q_low, 3)].value,
-                predictions[predictions.output_type_id == round(q_upp, 3)].value
-            )
-            out[f'{interval_range}_cov'] = cov
-
-        return out
-
     def get_wis_scores(self, predsall, surv, models, dates, save_location=False):
-        """Calculate WIS for each model, horizon, location, and date."""
-        results = []
-
-        surv = surv.copy()
-        surv['date'] = pd.to_datetime(surv['date'])
-        surv['value'] = pd.to_numeric(surv['value'], errors='coerce')
-        surv['location'] = surv['location'].astype(str)
-        max_surv_date = surv.date.max()
-
-        # Pre-filter to valid target_end_dates
-        predsall = predsall[predsall.target_end_date <= max_surv_date].copy()
-
-        # Build observation lookup: (date, location) -> value
-        surv_dict = {}
-        for _, r in surv.iterrows():
-            surv_dict[(r['date'], r['location'])] = r
-
-        # Group by the 4 dimensions at once instead of 4 nested loops
-        group_cols = ['Model', 'reference_date', 'horizon', 'location']
-        grouped = predsall.groupby(group_cols)
-        total_groups = len(grouped)
-        print(f"      Processing {total_groups} groups...")
-
-        for i, ((model, ref_date, horizon, location), predsfilt) in enumerate(grouped):
-            if horizon not in [0, 1, 2, 3]:
-                continue
-
-            if i > 0 and i % 5000 == 0:
-                print(f"      {i}/{total_groups} groups done...")
-
-            target_date = predsfilt.target_end_date.iloc[0]
-
-            obs_row = surv_dict.get((target_date, location))
-            if obs_row is None:
-                continue
-
-            observations = pd.DataFrame({'value': [float(obs_row['value'])]})
-
-            out = self.timestamp_wis(observations, predsfilt)
-            results.append(out)
-
-        dfwis = pd.concat(results, ignore_index=True)
-
-        if save_location:
-            dfwis.to_pickle(f'{save_location}fluforecast_timestamp_wis_{datetime.today().date()}.pkl')
-
-        return dfwis
-
-    def calculate_forecast_coverage(self, predsall, surv, models, dates,
-                                    save_location=False):
-        """Calculate coverage for each model, horizon, location, and date."""
-        results = []
+        """Calculate WIS for each model, horizon, location, and date (fully vectorized)."""
 
         surv = surv.copy()
         surv['date'] = pd.to_datetime(surv['date'])
@@ -179,45 +36,126 @@ class scoring_functions:
         max_surv_date = surv.date.max()
 
         # Pre-filter
-        predsall = predsall[predsall.target_end_date <= max_surv_date].copy()
+        predsall = predsall[
+            (predsall.target_end_date <= max_surv_date) &
+            (predsall.horizon.isin([0, 1, 2, 3]))
+        ].copy()
 
-        # Build observation lookup
-        surv_dict = {}
-        for _, r in surv.iterrows():
-            surv_dict[(r['date'], r['location'])] = r
+        # Pivot: one row per (Model, reference_date, horizon, location, target_end_date),
+        # one column per quantile
+        print("      Pivoting predictions into wide format...")
+        group_cols = ['Model', 'reference_date', 'horizon', 'location', 'target_end_date']
+        wide = predsall.pivot_table(
+            index=group_cols, columns='output_type_id', values='value', aggfunc='first'
+        ).reset_index()
 
-        # Group by all dimensions at once
-        group_cols = ['Model', 'reference_date', 'horizon', 'location']
-        grouped = predsall.groupby(group_cols)
-        total_groups = len(grouped)
-        print(f"      Processing {total_groups} groups...")
+        # Merge observations
+        print("      Merging observations...")
+        surv_dedup = surv.drop_duplicates(subset=['date', 'location'])
+        wide = wide.merge(
+            surv_dedup[['date', 'location', 'value']].rename(columns={'date': 'target_end_date', 'value': 'obs'}),
+            on=['target_end_date', 'location'],
+            how='inner'
+        )
 
-        for i, ((model, ref_date, horizon, location), pred) in enumerate(grouped):
-            if horizon not in [0, 1, 2, 3]:
-                continue
+        print(f"      Computing WIS for {len(wide)} forecast-observation pairs...")
 
-            if i > 0 and i % 5000 == 0:
-                print(f"      {i}/{total_groups} groups done...")
+        # Get sorted quantile columns
+        quantile_cols = sorted([c for c in wide.columns if isinstance(c, (int, float))])
+        Q = wide[quantile_cols].values  # shape: (n_rows, n_quantiles)
+        y = wide['obs'].values          # shape: (n_rows,)
 
-            target_date = pred.target_end_date.iloc[0]
+        # Compute WIS vectorially across all rows at once
+        n_quantiles = len(quantile_cols)
+        quantiles = np.array(quantile_cols)
 
-            obs_row = surv_dict.get((target_date, location))
-            if obs_row is None:
-                continue
+        interval_ranges = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 98]
+        WIS = np.zeros(len(y))
 
-            observations = pd.DataFrame({'value': [float(obs_row['value'])]})
+        for i in range(n_quantiles // 2):
+            lower = Q[:, i]
+            upper = Q[:, -(i+1)]
+            interval_range = 100 * (quantiles[-(i+1)] - quantiles[i])
+            alpha = 1 - (quantiles[-(i+1)] - quantiles[i])
 
-            out = self.get_all_coverages(observations, pred)
-            out = pd.DataFrame(out, index=[0])
-            out['Model'] = model
-            out['reference_date'] = ref_date
-            out['target_end_date'] = target_date
-            out['horizon'] = horizon
-            out['location'] = location
+            dispersion = upper - lower
+            underprediction = (2 / alpha) * (lower - y) * (y < lower)
+            overprediction = (2 / alpha) * (y - upper) * (y > upper)
+            IS = dispersion + underprediction + overprediction
 
-            results.append(out)
+            WIS += IS * alpha / 2
 
-        dfcoverage = pd.concat(results, ignore_index=True)
+        # Add median term (quantile index 11 = 0.5)
+        median_idx = list(quantiles).index(0.5) if 0.5 in quantiles else 11
+        WIS += 0.5 * np.abs(Q[:, median_idx] - y)
+        WIS /= (len(interval_ranges) + 0.5)
+
+        dfwis = wide[['Model', 'location', 'horizon', 'reference_date', 'target_end_date']].copy()
+        dfwis['wis'] = WIS
+
+        print(f"      Calculated WIS for {len(dfwis)} pairs")
+
+        if save_location:
+            dfwis.to_pickle(f'{save_location}fluforecast_timestamp_wis_{datetime.today().date()}.pkl')
+
+        return dfwis
+
+    def calculate_forecast_coverage(self, predsall, surv, models, dates,
+                                    save_location=False):
+        """Calculate coverage for each model, horizon, location, and date (fully vectorized)."""
+
+        surv = surv.copy()
+        surv['date'] = pd.to_datetime(surv['date'])
+        surv['value'] = pd.to_numeric(surv['value'], errors='coerce')
+        surv['location'] = surv['location'].astype(str)
+        max_surv_date = surv.date.max()
+
+        # Pre-filter
+        predsall = predsall[
+            (predsall.target_end_date <= max_surv_date) &
+            (predsall.horizon.isin([0, 1, 2, 3]))
+        ].copy()
+
+        # Pivot: one row per group, one column per quantile
+        print("      Pivoting predictions into wide format...")
+        group_cols = ['Model', 'reference_date', 'horizon', 'location', 'target_end_date']
+        wide = predsall.pivot_table(
+            index=group_cols, columns='output_type_id', values='value', aggfunc='first'
+        ).reset_index()
+
+        # Merge observations
+        print("      Merging observations...")
+        surv_dedup = surv.drop_duplicates(subset=['date', 'location'])
+        wide = wide.merge(
+            surv_dedup[['date', 'location', 'value']].rename(columns={'date': 'target_end_date', 'value': 'obs'}),
+            on=['target_end_date', 'location'],
+            how='inner'
+        )
+
+        print(f"      Computing coverage for {len(wide)} forecast-observation pairs...")
+
+        y = wide['obs'].values
+        interval_ranges = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 98]
+
+        # Compute all coverages vectorially
+        cov_data = {}
+        for interval_range in interval_ranges:
+            q_low = round(0.5 - interval_range / 200, 3)
+            q_upp = round(0.5 + interval_range / 200, 3)
+
+            if q_low in wide.columns and q_upp in wide.columns:
+                lower = wide[q_low].values
+                upper = wide[q_upp].values
+                covered = ((y >= lower) & (y <= upper)).astype(float)
+                cov_data[f'{interval_range}_cov'] = covered
+            else:
+                cov_data[f'{interval_range}_cov'] = np.nan
+
+        dfcoverage = wide[['Model', 'reference_date', 'target_end_date', 'horizon', 'location']].copy()
+        for col, vals in cov_data.items():
+            dfcoverage[col] = vals
+
+        print(f"      Calculated coverage for {len(dfcoverage)} pairs")
 
         if save_location:
             dfcoverage.to_pickle(f'{save_location}fluforecast_coverage_{datetime.today().date()}.pkl')

@@ -16,6 +16,8 @@ let evalAgg = "last4";           // "season", "last2", "last4"
 let evalSelectedHorizons = null; // null = all, or Set of ints
 let evalBoxLogScale = false;
 let evalHoveredFips = null;      // null = show US
+let evalLockedFips = null;       // clicked/locked state, null = none
+let evalTargetData = null;       // hospitalization target data keyed by location
 
 const EVAL_MAP_W = 560;
 const EVAL_MAP_H = 350;
@@ -24,7 +26,7 @@ const EVAL_TS_H = 180;
 const EVAL_BOX_W = 540;
 const EVAL_BOX_H = 440;
 const EVAL_COV_W = 440;
-const EVAL_COV_H = 400;
+const EVAL_COV_H = 470;
 const EVAL_FONT = "Helvetica Neue, Arial, sans-serif";
 
 // Color palette for models (deterministic, assigned at init)
@@ -116,14 +118,38 @@ function getMetricLabel() {
     return "";
 }
 
+/** Get contextual label + color for a metric value */
+function getMetricContext(val) {
+    if (val == null) return null;
+    if (evalMetric === "wis_relative") {
+        if (val < 0.8) return { label: "Strong — well below baseline", color: "#2a9d8f" };
+        if (val < 1.0) return { label: "Good — below baseline", color: "#2a9d8f" };
+        if (val < 1.2) return { label: "Near baseline", color: "#e9a83a" };
+        if (val < 1.5) return { label: "Above baseline", color: "#e07b54" };
+        return { label: "Well above baseline", color: "#c44e52" };
+    }
+    if (evalMetric === "wis_raw") {
+        // Compare to baseline WIS for context
+        return null; // Raw WIS scale varies too much by location; no universal thresholds
+    }
+    // Coverage metrics
+    const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+    const actual = val;
+    const diff = actual - nominal;
+    if (Math.abs(diff) <= 0.05) return { label: "Well calibrated", color: "#2a9d8f" };
+    if (diff > 0.05) return { label: "Underconfident — intervals too wide", color: "#2a9d8f" };
+    return { label: "Overconfident — intervals too narrow", color: "#2C5F8A" };
+}
+
 // ====================== INIT ======================
 async function initEvaluations() {
     try {
-        const [wis, coverage, locations, topo] = await Promise.all([
+        const [wis, coverage, locations, topo, targetData] = await Promise.all([
             d3.json("data/eval_wis.json"),
             d3.json("data/eval_coverage.json"),
             d3.json("data/locations.json"),
-            d3.json("data/us-states.json")
+            d3.json("data/us-states.json"),
+            d3.json("data/target_data.json")
         ]);
 
         evalWisRows = wis.rows;
@@ -132,6 +158,7 @@ async function initEvaluations() {
         evalCovMeta = { models: coverage.models, pi_levels: coverage.pi_levels };
         evalLocations = locations;
         evalTopoData = topo;
+        evalTargetData = targetData;
 
         locations.forEach(loc => {
             evalFipsToName[loc.fips] = loc.name;
@@ -145,7 +172,6 @@ async function initEvaluations() {
         });
 
         setupEvalControls();
-        setupEvalModal();
         updateAll();
 
     } catch (err) {
@@ -158,23 +184,58 @@ async function initEvaluations() {
     }
 }
 
-function setupEvalModal() {
-    document.getElementById("eval-info-btn").addEventListener("click", () => {
-        document.getElementById("eval-modal-overlay").classList.add("visible");
-    });
-    document.getElementById("eval-modal-close").addEventListener("click", () => {
-        document.getElementById("eval-modal-overlay").classList.remove("visible");
-    });
-    document.getElementById("eval-modal-overlay").addEventListener("click", (e) => {
-        if (e.target === e.currentTarget) e.currentTarget.classList.remove("visible");
-    });
-}
 
 function updateAll() {
     drawEvalMap();
     drawHoverTimeSeries(evalHoveredFips); // null = US
     drawBoxPlot();
     drawCoveragePlot();
+    updateInsights();
+}
+
+function updateInsights() {
+    const el = document.getElementById("eval-insights");
+    if (!el) return;
+
+    const model = evalSelectedModel;
+    const loc = evalLockedFips || evalHoveredFips || "US";
+    const locName = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
+    const piLevels = evalCovMeta.pi_levels;
+    const aggLabel = evalAgg === "season" ? "the full season" : evalAgg === "last2" ? "the last 2 weeks" : "the last 4 weeks";
+
+    // WIS ratio for selected model + location
+    const filteredWis = filterRows(evalWisRows).filter(r => r[0] === model && r[1] === loc);
+    let wisLine = "";
+    if (filteredWis.length > 0) {
+        let sumWis = 0, sumBase = 0;
+        for (const r of filteredWis) { sumWis += r[4]; sumBase += r[5]; }
+        if (sumBase > 0) {
+            const ratio = sumWis / sumBase;
+            const color = ratio < 1.0 ? "#2a9d8f" : "#e9a83a";
+            const pct = Math.abs((1 - ratio) * 100).toFixed(1);
+            const dir = ratio < 1.0 ? "better" : "worse";
+            wisLine = `Over ${aggLabel}, <strong>${model}</strong> has a WIS ratio of ` +
+                `<span style="color:${color};font-weight:700">${ratio.toFixed(3)}</span> in ` +
+                `<strong>${locName}</strong> (${pct}% ${dir} than baseline).`;
+        }
+    }
+
+    // Coverage for selected model + location
+    const pi50Idx = piLevels.indexOf(50);
+    const pi95Idx = piLevels.indexOf(95);
+    const filteredCov = filterRows(evalCovRows).filter(r => r[0] === model && r[1] === loc);
+    let covLine = "";
+    if (filteredCov.length > 0 && pi50Idx >= 0 && pi95Idx >= 0) {
+        let s50 = 0, s95 = 0;
+        for (const r of filteredCov) { s50 += r[4 + pi50Idx]; s95 += r[4 + pi95Idx]; }
+        const c50 = (s50 / filteredCov.length * 100).toFixed(0);
+        const c95 = (s95 / filteredCov.length * 100).toFixed(0);
+        const d95 = Math.abs(s95 / filteredCov.length * 100 - 95);
+        const cal = d95 <= 3 ? "well calibrated" : (s95 / filteredCov.length * 100 > 95 ? "slightly wide" : "slightly narrow");
+        covLine = `Prediction intervals are <strong>${cal}</strong> (50% PI: ${c50}%, 95% PI: ${c95}%).`;
+    }
+
+    el.innerHTML = [wisLine, covLine].filter(Boolean).join(" ") || "";
 }
 
 // ====================== CONTROLS ======================
@@ -245,6 +306,17 @@ function setupEvalControls() {
             drawBoxPlot();
         });
     });
+
+    // Reset location button
+    const resetBtn = document.getElementById("eval-reset-loc");
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            evalLockedFips = null;
+            drawHoverTimeSeries(null);
+            updateInsights();
+            drawEvalMap(); // redraw to clear highlight
+        });
+    }
 }
 
 // ====================== MAP ======================
@@ -301,32 +373,70 @@ function drawEvalMap() {
             const fips = d.id;
             const val = stateValues[fips];
             const name = evalFipsToName[fips] || fips;
+            const context = getMetricContext(val);
             d3.select("#eval-tooltip")
-                .style("display", "block")
-                .html(`<strong>${name}</strong><br>${getMetricLabel()}: ${formatMetric(val)}`);
+                .style("display", "block").style("opacity", 1)
+                .html(`<strong>${name}</strong><br>${getMetricLabel()}: ${formatMetric(val)}` +
+                    (context ? `<br><span style="color:${context.color};font-weight:600">${context.label}</span>` : ""));
             evalHoveredFips = fips;
-            drawHoverTimeSeries(fips);
+            if (!evalLockedFips) {
+                drawHoverTimeSeries(fips);
+                updateInsights();
+            }
         })
         .on("mousemove", (event) => {
             d3.select("#eval-tooltip")
-                .style("left", (event.pageX + 12) + "px")
-                .style("top", (event.pageY - 10) + "px");
+                .style("left", (event.clientX + 12) + "px")
+                .style("top", (event.clientY - 10) + "px");
         })
         .on("mouseleave", () => {
-            d3.select("#eval-tooltip").style("display", "none");
+            d3.select("#eval-tooltip").style("display", "none").style("opacity", 0);
             evalHoveredFips = null;
-            drawHoverTimeSeries(null); // Show US
+            if (!evalLockedFips) {
+                drawHoverTimeSeries(null);
+                updateInsights();
+            }
+        })
+        .on("click", (event, d) => {
+            const fips = d.id;
+            if (evalLockedFips === fips) {
+                // Clicking same state unlocks
+                evalLockedFips = null;
+            } else {
+                evalLockedFips = fips;
+            }
+            drawHoverTimeSeries(evalLockedFips);
+            updateInsights();
+            updateLockedStateHighlight(g, states, stateValues, colorScale);
         });
 
+    updateLockedStateHighlight(g, states, stateValues, colorScale);
     drawEvalLegend(colorScale);
+}
+
+function updateLockedStateHighlight(g, states, stateValues, colorScale) {
+    g.selectAll("path").data(states)
+        .attr("stroke", d => d.id === evalLockedFips ? "#333" : "#fff")
+        .attr("stroke-width", d => d.id === evalLockedFips ? 2 : 0.5);
+
+    // Update location indicator
+    const btn = document.getElementById("eval-reset-loc");
+    if (btn) {
+        if (evalLockedFips) {
+            btn.textContent = "View US";
+            btn.style.display = "inline-block";
+        } else {
+            btn.style.display = "none";
+        }
+    }
 }
 
 function getMapColorScale(stateValues) {
     if (evalMetric === "wis_relative") {
-        // Diverging: blue (good) — light gray — brown (bad), centered at 1.0
+        // Diverging: green (good) — light gray — amber/brown (bad), centered at 1.0
         return d3.scaleDiverging()
             .domain([0.3, 1.0, 3.0])
-            .interpolator(d3.interpolateRgbBasis(["#4A7FB5", "#eef2f6", "#B8663D"]));
+            .interpolator(d3.interpolateRgbBasis(["#2a9d8f", "#f0f0f0", "#c67a2e"]));
     }
     if (evalMetric === "wis_raw") {
         // Sequential white to blue — higher WIS = darker blue
@@ -336,16 +446,18 @@ function getMapColorScale(stateValues) {
             .domain([0, Math.max(maxVal, 10)])
             .interpolator(d3.interpolateRgbBasis(["#ffffff", "#d0dff0", "#7BAFD4", "#4A7FB5", "#2C5F8A"]));
     }
-    // Coverage: 0–100%, sequential white to blue — higher coverage = darker blue
-    return d3.scaleSequential()
-        .domain([0, 1.0])
-        .interpolator(d3.interpolateRgbBasis(["#ffffff", "#d0dff0", "#7BAFD4", "#4A7FB5", "#2C5F8A"]));
+    // Coverage: blue diverging centered at nominal level (50% or 95%)
+    const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+    return d3.scaleDiverging()
+        .domain([nominal - 0.3, nominal, nominal + 0.3])
+        .interpolator(d3.interpolateRgbBasis(["#2C5F8A", "#ffffff", "#2a9d8f"]));
 }
 
 function clampForScale(val) {
     if (evalMetric === "wis_relative") return Math.max(0.3, Math.min(3.0, val));
     if (evalMetric === "wis_raw") return Math.max(0, val);
-    return Math.max(0, Math.min(1.0, val));
+    const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+    return Math.max(nominal - 0.3, Math.min(nominal + 0.3, val));
 }
 
 function drawEvalLegend(colorScale) {
@@ -364,7 +476,11 @@ function drawEvalLegend(colorScale) {
     let domainMin, domainMax;
     if (evalMetric === "wis_relative") { domainMin = 0.3; domainMax = 3.0; }
     else if (evalMetric === "wis_raw") { domainMin = colorScale.domain()[0]; domainMax = colorScale.domain()[1]; }
-    else { domainMin = 0; domainMax = 1.0; }
+    else {
+        const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
+        domainMin = nominal - 0.3;
+        domainMax = nominal + 0.3;
+    }
 
     for (let i = 0; i <= 20; i++) {
         const t = i / 20;
@@ -383,7 +499,8 @@ function drawEvalLegend(colorScale) {
         tickVals = d3.scaleLinear().domain([domainMin, domainMax]).ticks(5);
         tickFmt = d3.format(".0f");
     } else {
-        tickVals = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+        const nom = evalMetric === "cov50" ? 0.50 : 0.95;
+        tickVals = [nom - 0.3, nom - 0.15, nom, nom + 0.15, nom + 0.3].filter(v => v >= 0 && v <= 1.0);
         tickFmt = v => (v * 100).toFixed(0) + "%";
     }
 
@@ -404,27 +521,141 @@ function drawEvalLegend(colorScale) {
 
 // ====================== HOVER TIME SERIES ======================
 function drawHoverTimeSeries(fips) {
-    const loc = fips || "US";
+    const isCovMetric = evalMetric === "cov50" || evalMetric === "cov95";
+    if (isCovMetric) {
+        drawHoverCoverageCalibration(fips);
+    } else {
+        drawHoverWisTimeSeries(fips);
+    }
+}
+
+function drawHoverCoverageCalibration(fips) {
+    const loc = fips || evalLockedFips || "US";
     const svg = d3.select("#eval-ts-chart")
         .attr("viewBox", `0 0 ${EVAL_TS_W} ${EVAL_TS_H}`)
         .attr("preserveAspectRatio", "xMidYMid meet");
     svg.selectAll("*").remove();
 
-    const margin = { top: 22, right: 12, bottom: 30, left: 40 };
+    const margin = { top: 22, right: 12, bottom: 34, left: 44 };
     const innerW = EVAL_TS_W - margin.left - margin.right;
     const innerH = EVAL_TS_H - margin.top - margin.bottom;
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const tooltip = d3.select("#eval-tooltip");
     const name = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
-    const isCovMetric = evalMetric === "cov50" || evalMetric === "cov95";
+    const piLevels = evalCovMeta.pi_levels;
 
-    // Get rows for this model + location
-    const locWisRows = evalWisRows.filter(r =>
+    // Title
+    svg.append("text").attr("x", margin.left).attr("y", 14)
+        .attr("font-family", EVAL_FONT).attr("font-size", "10px")
+        .attr("font-weight", "600").attr("fill", "#555")
+        .text(`Coverage Calibration: ${name}`);
+
+    // Get coverage rows for this model + location
+    const locCovRows = evalCovRows.filter(r =>
         r[0] === evalSelectedModel && r[1] === loc &&
         (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3]))
     );
-    const locCovRows = evalCovRows.filter(r =>
+
+    if (locCovRows.length === 0) {
+        g.append("text").attr("x", innerW / 2).attr("y", innerH / 2)
+            .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+            .attr("font-size", "11px").attr("fill", "#999")
+            .text("Insufficient data");
+        return;
+    }
+
+    // Compute mean coverage per PI level
+    const meanCov = piLevels.map((pi, idx) => {
+        let sum = 0;
+        for (const r of locCovRows) sum += r[4 + idx];
+        return { pi, actual: sum / locCovRows.length };
+    });
+
+    const x = d3.scaleLinear().domain([0, 100]).range([0, innerW]);
+    const y = d3.scaleLinear().domain([0, 100]).range([innerH, 0]);
+
+    // Grid
+    y.ticks(5).forEach(t => {
+        g.append("line").attr("x1", 0).attr("y1", y(t)).attr("x2", innerW).attr("y2", y(t))
+            .attr("stroke", "#eee").attr("stroke-width", 0.5);
+    });
+
+    // Ideal diagonal
+    g.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(100)).attr("y2", y(100))
+        .attr("stroke", "#999").attr("stroke-width", 1.5).attr("stroke-dasharray", "6,4");
+
+    // Highlight selected PI level
+    const selectedPi = evalMetric === "cov50" ? 50 : 95;
+    g.append("line")
+        .attr("x1", x(selectedPi)).attr("y1", y(0)).attr("x2", x(selectedPi)).attr("y2", y(100))
+        .attr("stroke", "#4682B4").attr("stroke-width", 1).attr("stroke-dasharray", "3,3").attr("opacity", 0.5);
+
+    // Line
+    const lineColor = MODEL_COLORS[evalSelectedModel] || "#4682B4";
+    const lineGen = d3.line().x(d => x(d.pi)).y(d => y(d.actual * 100));
+    g.append("path").datum(meanCov).attr("d", lineGen)
+        .attr("fill", "none").attr("stroke", lineColor).attr("stroke-width", 2);
+
+    // Dots — larger for selected PI
+    g.selectAll(".cal-dot").data(meanCov).join("circle")
+        .attr("cx", d => x(d.pi)).attr("cy", d => y(d.actual * 100))
+        .attr("r", d => d.pi === selectedPi ? 5 : 3)
+        .attr("fill", lineColor).attr("stroke", "#fff").attr("stroke-width", 1);
+
+    // Hover
+    meanCov.forEach(d => {
+        g.append("circle")
+            .attr("cx", x(d.pi)).attr("cy", y(d.actual * 100))
+            .attr("r", 8).attr("fill", "transparent").style("cursor", "pointer")
+            .on("mouseenter", (event) => {
+                const diff = (d.actual * 100 - d.pi).toFixed(1);
+                tooltip.style("display", "block").style("opacity", 1).html(
+                    `<strong>${name}</strong><br>${d.pi}% PI: ${(d.actual * 100).toFixed(1)}% actual<br>Diff: ${diff}%`
+                );
+            })
+            .on("mousemove", (event) => {
+                tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
+            })
+            .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
+    });
+
+    // Axes
+    g.append("g").attr("transform", `translate(0,${innerH})`)
+        .call(d3.axisBottom(x).tickValues([0, 20, 40, 60, 80, 100]).tickFormat(d => d + "%"))
+        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "8px");
+
+    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"))
+        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "8px");
+
+    // Axis labels
+    g.append("text").attr("x", innerW / 2).attr("y", innerH + 28)
+        .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+        .attr("font-size", "9px").attr("fill", "#666").text("Prediction Interval");
+
+    g.append("text").attr("transform", "rotate(-90)")
+        .attr("x", -innerH / 2).attr("y", -34).attr("text-anchor", "middle")
+        .attr("font-family", EVAL_FONT).attr("font-size", "9px").attr("fill", "#666")
+        .text("Actual Coverage");
+}
+
+function drawHoverWisTimeSeries(fips) {
+    const loc = fips || evalLockedFips || "US";
+    const svg = d3.select("#eval-ts-chart")
+        .attr("viewBox", `0 0 ${EVAL_TS_W} ${EVAL_TS_H}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+    svg.selectAll("*").remove();
+
+    const margin = { top: 22, right: 40, bottom: 30, left: 40 };
+    const innerW = EVAL_TS_W - margin.left - margin.right;
+    const innerH = EVAL_TS_H - margin.top - margin.bottom;
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const tooltip = d3.select("#eval-tooltip");
+    const name = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
+
+    // Get rows for this model + location
+    const locWisRows = evalWisRows.filter(r =>
         r[0] === evalSelectedModel && r[1] === loc &&
         (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3]))
     );
@@ -435,19 +666,14 @@ function drawHoverTimeSeries(fips) {
         if (!byDateWis[r[2]]) byDateWis[r[2]] = [];
         byDateWis[r[2]].push(r);
     }
-    const byDateCov = {};
-    for (const r of locCovRows) {
-        if (!byDateCov[r[2]]) byDateCov[r[2]] = [];
-        byDateCov[r[2]].push(r);
-    }
 
-    const allDates = [...new Set([...Object.keys(byDateWis), ...Object.keys(byDateCov)])].sort();
+    const allDates = Object.keys(byDateWis).sort();
     const piLevels = evalCovMeta.pi_levels;
 
     const data = allDates.map(date => ({
         date: new Date(date + "T00:00:00"),
         dateStr: date,
-        value: getMetricValue(byDateWis[date] || [], byDateCov[date] || [], piLevels)
+        value: getMetricValue(byDateWis[date] || [], [], piLevels)
     })).filter(d => d.value != null).sort((a, b) => a.date - b.date);
 
     // Title
@@ -465,37 +691,59 @@ function drawHoverTimeSeries(fips) {
     }
 
     const x = d3.scaleTime().domain(d3.extent(data, d => d.date)).range([0, innerW]);
-    let yDomain;
-    if (isCovMetric) {
-        yDomain = [0, 1.05];
-    } else {
-        const yMax = Math.max(d3.max(data, d => d.value), evalMetric === "wis_relative" ? 1.5 : 10);
-        yDomain = [0, yMax * 1.1];
-    }
-    const y = d3.scaleLinear().domain(yDomain).range([innerH, 0]);
+    const yMax = Math.max(d3.max(data, d => d.value), evalMetric === "wis_relative" ? 1.5 : 10);
+    const y = d3.scaleLinear().domain([0, yMax * 1.1]).range([innerH, 0]);
 
+    // Hospitalization background area
+    const hospData = getHospDataForDateRange(loc, d3.extent(data, d => d.date));
+    if (hospData.length > 1) {
+        const hospMax = d3.max(hospData, d => d.value);
+        const yHosp = d3.scaleLinear().domain([0, hospMax * 1.1]).range([innerH, 0]);
+
+        const area = d3.area()
+            .x(d => x(d.date))
+            .y0(innerH)
+            .y1(d => yHosp(d.value));
+
+        g.append("path").datum(hospData).attr("d", area)
+            .attr("fill", "#ccc").attr("opacity", 0.3);
+
+        // Right y-axis for hospitalizations
+        const yHospAxis = g.append("g").attr("transform", `translate(${innerW}, 0)`)
+            .call(d3.axisRight(yHosp).ticks(4).tickFormat(d3.format(",.0f")));
+        yHospAxis.selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "8px").attr("fill", "#999");
+        yHospAxis.select(".domain").attr("stroke", "#ccc");
+
+        // Right y-axis label
+        g.append("text").attr("transform", "rotate(90)")
+            .attr("x", innerH / 2).attr("y", -innerW - 30)
+            .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+            .attr("font-size", "8px").attr("fill", "#999").text("Hospitalizations");
+    }
+
+    // Left y-axis
+    const yFmt = evalMetric === "wis_raw" ? d3.format(".0f") : d3.format(".1f");
+    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(yFmt))
+        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
+
+    // Left y-axis label
+    g.append("text").attr("transform", "rotate(-90)")
+        .attr("x", -innerH / 2).attr("y", -30)
+        .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
+        .attr("font-size", "8px").attr("fill", "#666").text(getMetricLabel());
+
+    // X axis
     g.append("g").attr("transform", `translate(0,${innerH})`)
         .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")))
         .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
 
-    const yFmt = isCovMetric ? (d => (d * 100).toFixed(0) + "%") : (evalMetric === "wis_raw" ? d3.format(".0f") : d3.format(".1f"));
-    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(yFmt))
-        .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
-
-    // Reference line
+    // Reference line for WIS relative
     if (evalMetric === "wis_relative") {
         g.append("line").attr("x1", 0).attr("y1", y(1)).attr("x2", innerW).attr("y2", y(1))
             .attr("stroke", "#aaa").attr("stroke-width", 1).attr("stroke-dasharray", "4,3");
         g.append("text").attr("x", innerW - 2).attr("y", y(1) - 4)
             .attr("text-anchor", "end").attr("font-family", EVAL_FONT)
             .attr("font-size", "8px").attr("fill", "#aaa").text("Baseline");
-    } else if (isCovMetric) {
-        const nominal = evalMetric === "cov50" ? 0.50 : 0.95;
-        g.append("line").attr("x1", 0).attr("y1", y(nominal)).attr("x2", innerW).attr("y2", y(nominal))
-            .attr("stroke", "#aaa").attr("stroke-width", 1).attr("stroke-dasharray", "4,3");
-        g.append("text").attr("x", innerW - 2).attr("y", y(nominal) - 4)
-            .attr("text-anchor", "end").attr("font-family", EVAL_FONT)
-            .attr("font-size", "8px").attr("fill", "#aaa").text("Ideal");
     }
 
     // Highlight aggregation window
@@ -511,6 +759,7 @@ function drawHoverTimeSeries(fips) {
             .attr("opacity", 0.08);
     }
 
+    // WIS line
     const lineColor = MODEL_COLORS[evalSelectedModel] || "#4682B4";
     const line = d3.line().x(d => x(d.date)).y(d => y(d.value));
     g.append("path").datum(data).attr("d", line)
@@ -521,24 +770,56 @@ function drawHoverTimeSeries(fips) {
         .attr("r", 3).attr("fill", lineColor)
         .attr("stroke", "#fff").attr("stroke-width", 1);
 
-    // Hover overlay for tooltips on each dot
+    // Legend (top-right inside plot)
+    if (hospData.length > 1) {
+        const legendG = g.append("g").attr("transform", `translate(${innerW - 90}, 2)`);
+        legendG.append("rect").attr("x", -4).attr("y", -8).attr("width", 94).attr("height", 28)
+            .attr("fill", "#fff").attr("opacity", 0.85).attr("rx", 3);
+        // WIS line legend
+        legendG.append("line").attr("x1", 0).attr("y1", 0).attr("x2", 12).attr("y2", 0)
+            .attr("stroke", lineColor).attr("stroke-width", 2);
+        legendG.append("text").attr("x", 15).attr("y", 3)
+            .attr("font-family", EVAL_FONT).attr("font-size", "8px").attr("fill", "#333")
+            .text(evalMetric === "wis_relative" ? "WIS / Baseline" : "WIS");
+        // Hosp area legend
+        legendG.append("rect").attr("x", 0).attr("y", 8).attr("width", 12).attr("height", 6)
+            .attr("fill", "#ccc").attr("opacity", 0.5);
+        legendG.append("text").attr("x", 15).attr("y", 14)
+            .attr("font-family", EVAL_FONT).attr("font-size", "8px").attr("fill", "#999")
+            .text("Hospitalizations");
+    }
+
+    // Hover overlay
     const hoverG = g.append("g");
     data.forEach(d => {
         hoverG.append("circle")
             .attr("cx", x(d.date)).attr("cy", y(d.value))
             .attr("r", 8).attr("fill", "transparent").style("cursor", "pointer")
             .on("mouseenter", (event) => {
-                tooltip.style("display", "block").html(
+                tooltip.style("display", "block").style("opacity", 1).html(
                     `<strong>${name}</strong><br>` +
                     `${d3.timeFormat("%b %d, %Y")(d.date)}<br>` +
                     `${getMetricLabel()}: ${formatMetric(d.value)}`
                 );
             })
             .on("mousemove", (event) => {
-                tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 10) + "px");
+                tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
             })
-            .on("mouseleave", () => { tooltip.style("display", "none"); });
+            .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
     });
+}
+
+/** Get hospitalization data for a location within a date range */
+function getHospDataForDateRange(loc, dateExtent) {
+    if (!evalTargetData) return [];
+    const locData = evalTargetData[loc];
+    if (!locData) return [];
+
+    const [minDate, maxDate] = dateExtent;
+    return locData
+        .map(d => ({ date: new Date(d.date + "T00:00:00"), value: d.value }))
+        .filter(d => d.date >= minDate && d.date <= maxDate && d.value != null)
+        .sort((a, b) => a.date - b.date);
 }
 
 // ====================== BOX PLOT ======================
@@ -557,19 +838,13 @@ function drawBoxPlot() {
     const filtered = filterRows(evalWisRows);
     const allModels = evalWisMeta.models;
 
-    // For each model, compute WIS ratio per location → distribution
+    // For each model, collect individual WIS ratios (one per date/location/horizon)
     const modelRatios = {};
     for (const model of allModels) {
         const mRows = filtered.filter(r => r[0] === model);
-        const byLoc = {};
-        for (const r of mRows) {
-            if (!byLoc[r[1]]) byLoc[r[1]] = [];
-            byLoc[r[1]].push(r);
-        }
         const ratios = [];
-        for (const rows of Object.values(byLoc)) {
-            const ratio = computeWisRatio(rows);
-            if (ratio != null) ratios.push(ratio);
+        for (const r of mRows) {
+            if (r[5] > 0) ratios.push(r[4] / r[5]);
         }
         if (ratios.length > 0) modelRatios[model] = ratios;
     }
@@ -606,7 +881,7 @@ function drawBoxPlot() {
     g.append("line").attr("x1", x(1)).attr("y1", 0).attr("x2", x(1)).attr("y2", innerH)
         .attr("stroke", "#999").attr("stroke-width", 1).attr("stroke-dasharray", "6,4");
 
-    // Boxes
+    // Draw box visuals
     models.forEach(model => {
         const s = stats[model];
         const cy = y(model) + y.bandwidth() / 2;
@@ -642,26 +917,29 @@ function drawBoxPlot() {
             .attr("x1", x(cl(s.median))).attr("y1", boxTop)
             .attr("x2", x(cl(s.median))).attr("y2", boxTop + boxH)
             .attr("stroke", "#1a1a1a").attr("stroke-width", 2).attr("stroke-dasharray", "3,2");
+    });
 
-        // Hover rect for tooltip
+    // Hover rects on top of all visuals so they receive pointer events
+    models.forEach(model => {
+        const s = stats[model];
         g.append("rect")
             .attr("x", 0).attr("y", y(model))
             .attr("width", innerW).attr("height", y.bandwidth())
             .attr("fill", "transparent").style("cursor", "pointer")
             .on("mouseenter", (event) => {
-                tooltip.style("display", "block").html(
+                tooltip.style("display", "block").style("opacity", 1).html(
                     `<strong>${model}</strong><br>` +
                     `Median: ${s.median.toFixed(3)}<br>` +
                     `Mean: ${s.mean.toFixed(3)}<br>` +
                     `Q1–Q3: ${s.q1.toFixed(3)} – ${s.q3.toFixed(3)}<br>` +
                     `Whiskers: ${s.whisker_low.toFixed(3)} – ${s.whisker_high.toFixed(3)}<br>` +
-                    `States: ${s.n}`
+                    `n: ${s.n}`
                 );
             })
             .on("mousemove", (event) => {
-                tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 10) + "px");
+                tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
             })
-            .on("mouseleave", () => { tooltip.style("display", "none"); });
+            .on("mouseleave", () => { tooltip.style("display", "none").style("opacity", 0); });
     });
 
     // X axis
@@ -677,7 +955,9 @@ function drawBoxPlot() {
 
     // Y axis
     const yAxis = g.append("g").call(d3.axisLeft(y));
-    yAxis.selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "10px");
+    yAxis.selectAll("text")
+        .attr("font-family", EVAL_FONT).attr("font-size", "10px")
+        .attr("font-weight", d => /median epistorm ensemble|lop.*ensemble|flusight.*ensemble/i.test(d) ? "700" : "400");
 }
 
 // ====================== COVERAGE PLOT ======================
@@ -747,29 +1027,35 @@ function drawCoveragePlot() {
         const el = d3.select(this);
         const data = modelCov[model];
         const color = MODEL_COLORS[model] || "#888";
+        const isHighlighted = /median epistorm ensemble|lop.*ensemble|flusight.*ensemble/i.test(model);
+        const lineOpacity = isHighlighted ? 1 : 0.2;
+        const lineWidth = isHighlighted ? 3 : 1.5;
+        const dotR = isHighlighted ? 4 : 2.5;
+        const dotOpacity = isHighlighted ? 1 : 0.2;
 
         el.append("path").datum(data).attr("d", lineGen)
-            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 2).attr("opacity", 0.8)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", lineWidth).attr("opacity", lineOpacity)
             .attr("class", "cov-line");
 
         el.selectAll(".cov-dot").data(data).join("circle")
             .attr("cx", (d, i) => x(piLevels[i])).attr("cy", d => y(d * 100))
-            .attr("r", 3).attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 1)
+            .attr("r", dotR).attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 1)
+            .attr("opacity", dotOpacity)
             .attr("class", "cov-dot");
     });
 
     // Hover interaction — find nearest model line, highlight, show tooltip with all PI coverages
     const overlay = g.append("rect")
         .attr("width", innerW).attr("height", innerH)
-        .attr("fill", "none").attr("pointer-events", "all");
+        .attr("fill", "transparent").style("cursor", "pointer");
 
     overlay.on("mousemove", (event) => {
         const [mx, my] = d3.pointer(event);
-        let nearestModel = null, nearestDist = Infinity;
+        let nearestModel = null, nearestDist = Infinity, nearestPiIdx = 0;
         activeModels.forEach(model => {
             modelCov[model].forEach((val, i) => {
                 const dist = Math.sqrt((mx - x(piLevels[i])) ** 2 + (my - y(val * 100)) ** 2);
-                if (dist < nearestDist) { nearestDist = dist; nearestModel = model; }
+                if (dist < nearestDist) { nearestDist = dist; nearestModel = model; nearestPiIdx = i; }
             });
         });
 
@@ -780,34 +1066,37 @@ function drawCoveragePlot() {
                 d3.select(this).selectAll(".cov-dot").attr("opacity", hl ? 1 : 0.12).attr("r", hl ? 4.5 : 2.5);
             });
 
-            const data = modelCov[nearestModel];
-            let html = `<strong>${nearestModel}</strong>`;
-            piLevels.forEach((pi, i) => {
-                html += `<br>${pi}% PI: ${(data[i] * 100).toFixed(1)}%`;
-            });
-            tooltip.style("display", "block").html(html);
-            tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 10) + "px");
+            const covVal = modelCov[nearestModel][nearestPiIdx];
+            const pi = piLevels[nearestPiIdx];
+            const html = `<strong>${nearestModel}</strong><br>${pi}% PI Coverage: ${(covVal * 100).toFixed(1)}%`;
+            tooltip.style("display", "block").style("opacity", 1).html(html);
+            tooltip.style("left", (event.clientX + 12) + "px").style("top", (event.clientY - 10) + "px");
         } else {
             resetCovHighlight();
-            tooltip.style("display", "none");
+            tooltip.style("display", "none").style("opacity", 0);
         }
     });
 
     overlay.on("mouseleave", () => {
         resetCovHighlight();
-        tooltip.style("display", "none");
+        tooltip.style("display", "none").style("opacity", 0);
     });
 
     function resetCovHighlight() {
-        lineGroups.each(function () {
-            d3.select(this).selectAll(".cov-line").attr("opacity", 0.8).attr("stroke-width", 2);
-            d3.select(this).selectAll(".cov-dot").attr("opacity", 1).attr("r", 3);
+        lineGroups.each(function (model) {
+            const isHighlighted = /median epistorm ensemble|lop.*ensemble|flusight.*ensemble/i.test(model);
+            d3.select(this).selectAll(".cov-line")
+                .attr("opacity", isHighlighted ? 1 : 0.2)
+                .attr("stroke-width", isHighlighted ? 3 : 1.5);
+            d3.select(this).selectAll(".cov-dot")
+                .attr("opacity", isHighlighted ? 1 : 0.2)
+                .attr("r", isHighlighted ? 4 : 2.5);
         });
     }
 
     // Axes
     g.append("g").attr("transform", `translate(0,${innerH})`)
-        .call(d3.axisBottom(x).tickValues(piLevels).tickFormat(d => d + "%"))
+        .call(d3.axisBottom(x).tickValues(piLevels.filter(d => d !== 95)).tickFormat(d => d + "%"))
         .selectAll("text").attr("font-family", EVAL_FONT).attr("font-size", "9px");
 
     g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"))
@@ -821,6 +1110,28 @@ function drawCoveragePlot() {
         .attr("x", -innerH / 2).attr("y", -36).attr("text-anchor", "middle")
         .attr("font-family", EVAL_FONT).attr("font-size", "11px").attr("fill", "#666")
         .text("Coverage %");
+
+    // Legend for highlighted models — inside the plot area (top-right)
+    const highlightedModels = ["Median Epistorm Ensemble", "LOP Epistorm Ensemble", "FluSight-ensemble"];
+    const legendG = g.append("g").attr("transform", `translate(${innerW * 0.3}, 4)`);
+    legendG.append("rect")
+        .attr("x", -8).attr("y", -10)
+        .attr("width", 176).attr("height", highlightedModels.length * 18 + 8)
+        .attr("fill", "#fff").attr("opacity", 0.85).attr("rx", 4);
+    let ly = 0;
+    highlightedModels.forEach(model => {
+        if (!modelCov[model]) return;
+        const color = MODEL_COLORS[model] || "#888";
+        const item = legendG.append("g").attr("transform", `translate(0, ${ly})`);
+        item.append("line").attr("x1", 0).attr("y1", 0).attr("x2", 16).attr("y2", 0)
+            .attr("stroke", color).attr("stroke-width", 3);
+        item.append("circle").attr("cx", 8).attr("cy", 0).attr("r", 3)
+            .attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 1);
+        item.append("text").attr("x", 20).attr("y", 4)
+            .attr("font-family", EVAL_FONT).attr("font-size", "9px").attr("fill", "#333")
+            .text(model);
+        ly += 18;
+    });
 }
 
 // Start

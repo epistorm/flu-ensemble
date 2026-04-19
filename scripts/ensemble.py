@@ -16,12 +16,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 api_key = os.environ.get('COVIDCAST_API_KEY', '4bee67d2520898')
 
-# Option A: If the old method still exists in your version
+# Set API key for both covidcast and Epidata clients
 try:
     covidcast.use_api_key(api_key)
 except AttributeError:
-    # Newer versions don't have this method
     os.environ['COVIDCAST_API_KEY'] = api_key
+
+# Set API key for delphi_epidata
+Epidata.auth = ('epidata', api_key)
 
 
 def get_versioned_data():
@@ -44,9 +46,13 @@ def get_versioned_data():
     # Convert to DataFrame
     if result_adm['result'] == 1:
         dfadm = pd.DataFrame(result_adm['epidata'])
+    else:
+        raise RuntimeError(f"Epidata API error (state): {result_adm.get('message')}")
+
+    if result_adm_us['result'] == 1:
         dfadm_us = pd.DataFrame(result_adm_us['epidata'])
     else:
-        print(f"No results: {result_adm.get('message')}")
+        raise RuntimeError(f"Epidata API error (nation): {result_adm_us.get('message')}")
 
     dfadm = dfadm[['geo_value', 'time_value','issue','value']]
     dfadm_us = dfadm_us[['geo_value', 'time_value','issue','value']]
@@ -288,7 +294,7 @@ def process_location_date(group_data: pd.DataFrame, date, location) -> pd.DataFr
     return pd.DataFrame(final_results)
 
  
-def create_categorical_ensemble_quantile(df):
+def create_categorical_ensemble_quantile(df, obs_vers=None, model_name='Median Epistorm Ensemble'):
     obs = pd.read_csv('https://raw.githubusercontent.com/cdcepi/FluSight-forecast-hub/refs/heads/main/target-data/target-hospital-admissions.csv')
     obs['date'] = pd.to_datetime(obs['date'])
     locations = pd.read_csv(BASE_DIR / 'data' / 'locations.csv')
@@ -310,79 +316,83 @@ def create_categorical_ensemble_quantile(df):
                 "stable_count_max": 10,
                 "large_threshold": 5.0,},}
 
-    results = []
-
-    # Fetch versioned data ONCE outside the loop
-    print("   Fetching versioned observation data (one-time API call)...")
-    obs_vers = get_versioned_data()
+    # Fetch versioned data ONCE outside the loop (or use pre-fetched data)
+    if obs_vers is None:
+        print("   Fetching versioned observation data (one-time API call)...")
+        obs_vers = get_versioned_data()
+    else:
+        print("   Using pre-fetched versioned observation data...")
     obs_vers['target_end_date'] = pd.to_datetime(obs_vers['target_end_date'])
     obs_vers['issue_date'] = pd.to_datetime(obs_vers['issue_date'])
+
+    # --- Pre-build lookup dicts for O(1) access instead of per-row filtering ---
+    # Population lookup: location -> population
+    pop_dict = dict(zip(locations['location'], locations['population']))
+
+    # Versioned obs lookup: (location, target_end_date, issue_date) -> value
+    obs_vers_dict = {}
+    for _, r in obs_vers.iterrows():
+        obs_vers_dict[(r['location'], r['target_end_date'], r['issue_date'])] = r['value']
+
+    # Fallback obs lookup: (location, date) -> value
+    obs_dict = {}
+    for _, r in obs.iterrows():
+        obs_dict[(r['location'], r['date'])] = r['value']
+
+    # Sort df once by output_type_id within each group
+    df = df.sort_values(by=['reference_date', 'horizon', 'location', 'output_type_id'])
 
     # Get all unique combinations
     combinations = df[['reference_date', 'horizon', 'location']].drop_duplicates()
     print(f"   Processing {len(combinations)} combinations...")
 
-    for idx, row in combinations.iterrows():
-        reference_date = row['reference_date']
-        horizon = row['horizon']
-        loc = row['location']
+    # Group df once for O(1) group lookups
+    grouped = df.groupby(['reference_date', 'horizon', 'location'])
+
+    # Pre-allocate result arrays (5 categories per combination)
+    n_combos = len(combinations)
+    categories = ['large_decrease', 'decrease', 'stable', 'increase', 'large_increase']
+    res_ref_dates = np.empty(n_combos * 5, dtype=object)
+    res_target_dates = np.empty(n_combos * 5, dtype=object)
+    res_horizons = np.empty(n_combos * 5, dtype=int)
+    res_locations = np.empty(n_combos * 5, dtype=object)
+    res_categories = np.empty(n_combos * 5, dtype=object)
+    res_values = np.empty(n_combos * 5, dtype=float)
+    valid_count = 0
+
+    combo_values = combinations.values  # numpy array for fast iteration
+
+    for i in range(len(combo_values)):
+        reference_date = combo_values[i, 0]
+        horizon = combo_values[i, 1]
+        loc = combo_values[i, 2]
 
         try:
-            # Filter data for this combination
-            df_subset = df[
-                (df.reference_date == reference_date) &
-                (df.horizon == horizon) &
-                (df.location == loc)
-            ].sort_values(by='output_type_id')
+            # Get group directly via dict lookup (no filtering)
+            grp = grouped.get_group((reference_date, horizon, loc))
 
-            if len(df_subset) == 0:
-                print(f"No data for {loc}, horizon {horizon}, reference_date {reference_date}")
-                continue
+            target_end_date = grp['target_end_date'].iloc[0]
 
-            # Get target_end_date (should be same for all quantiles in this subset)
-            target_end_date = df_subset['target_end_date'].iloc[0]
-
-            # Get observed value
+            # Get observed value via dict lookup
             last_obs = pd.to_datetime(reference_date) - timedelta(days=7)
+            ref_dt = pd.to_datetime(reference_date)
 
-            obs_subset = obs_vers[(obs_vers.location == loc) & (obs_vers.target_end_date == last_obs) &\
-                                (obs_vers.issue_date==pd.to_datetime(reference_date))]
-
-            if len(obs_subset) == 0:
-                obs_subset = obs[(obs.location == loc) & (obs.date == last_obs)]
-
-
-            if len(obs_subset) == 0:
-                print(f"No observation for {loc} on {last_obs}")
+            val = obs_vers_dict.get((loc, last_obs, ref_dt))
+            if val is None:
+                val = obs_dict.get((loc, last_obs))
+            if val is None:
                 continue
 
-            val = obs_subset.value.values[0]
+            # Compute count and rate changes using numpy arrays
+            forecast_values = grp['value'].values.astype(float)
+            quantiles = grp['output_type_id'].values.astype(float)
+            count_changes = forecast_values - float(val)
 
-            # Calculate count differences
-            df_subset = df_subset.copy()
-            df_subset['count_diff'] = df_subset['value'] - val
-
-            quantiles = list(df_subset['output_type_id'])
-            count_changes = list(df_subset['count_diff'])
-
-            # Get population
-            pop_subset = locations[locations.location == loc]
-            if len(pop_subset) == 0:
-                print(f"No population data for {loc}")
+            population = pop_dict.get(loc)
+            if population is None:
                 continue
 
-            population = pop_subset.population.values[0]
-            rate_changes = (np.array(count_changes) / population) * 100000
-
-            # Create CDFs
-            cdf_count = interp1d(
-                count_changes, quantiles,
-                kind='linear', bounds_error=False, fill_value=(0, 1)
-            )
-            cdf_rate = interp1d(
-                rate_changes, quantiles,
-                kind='linear', bounds_error=False, fill_value=(0, 1)
-            )
+            rate_changes = count_changes * (100000.0 / population)
 
             # Get thresholds
             trends = TREND_MAP[horizon]
@@ -390,110 +400,115 @@ def create_categorical_ensemble_quantile(df):
             ratemap = trends['stable_rate_max']
             largemap = trends['large_threshold']
 
-            # Get CDF values at boundaries
-            p_count_minus10 = float(cdf_count(-countmap))
-            p_count_plus10 = float(cdf_count(countmap))
-            p_rate_decrease = float(cdf_rate(-ratemap))
-            p_rate_increase = float(cdf_rate(ratemap))
-            p_rate_largedec = float(cdf_rate(-largemap))
-            p_rate_largeinc = float(cdf_rate(largemap))
+            # Use np.interp instead of scipy.interp1d (much faster, no object creation)
+            # np.interp(x, xp, fp) — xp must be increasing
+            # CDF: maps value -> quantile, so xp=count_changes, fp=quantiles
+            p_count_minus10 = float(np.interp(-countmap, count_changes, quantiles, left=0.0, right=1.0))
+            p_count_plus10 = float(np.interp(countmap, count_changes, quantiles, left=0.0, right=1.0))
+            p_rate_decrease = float(np.interp(-ratemap, rate_changes, quantiles, left=0.0, right=1.0))
+            p_rate_increase = float(np.interp(ratemap, rate_changes, quantiles, left=0.0, right=1.0))
+            p_rate_largedec = float(np.interp(-largemap, rate_changes, quantiles, left=0.0, right=1.0))
+            p_rate_largeinc = float(np.interp(largemap, rate_changes, quantiles, left=0.0, right=1.0))
 
             # Calculate rates at count boundaries
-            rate_count10 = (countmap / population) * 100000
-            rate_countminus10 = (-countmap / population) * 100000
+            rate_count10 = countmap * (100000.0 / population)
+            rate_countminus10 = -rate_count10
 
             # Initialize probabilities with defaults (rate-based)
-            probs = {}
-            probs['stable'] = p_rate_increase - p_rate_decrease
-            probs['increase'] = p_rate_largeinc - p_rate_increase
-            probs['large_increase'] = 1 - p_rate_largeinc
-            probs['decrease'] = p_rate_decrease - p_rate_largedec
-            probs['large_decrease'] = p_rate_largedec
+            p_stable = p_rate_increase - p_rate_decrease
+            p_increase = p_rate_largeinc - p_rate_increase
+            p_large_increase = 1 - p_rate_largeinc
+            p_decrease = p_rate_decrease - p_rate_largedec
+            p_large_decrease = p_rate_largedec
 
             # Apply logic based on which constraints are binding
             if rate_count10 < ratemap and rate_countminus10 > -ratemap:
                 pass
 
             elif rate_count10 < largemap and rate_count10 >= ratemap and rate_countminus10 > -ratemap:
-                probs['stable'] = p_count_plus10 - p_rate_decrease
-                probs['increase'] = p_rate_largeinc - p_count_plus10
+                p_stable = p_count_plus10 - p_rate_decrease
+                p_increase = p_rate_largeinc - p_count_plus10
 
             elif rate_count10 >= largemap and rate_countminus10 > -ratemap:
-                probs['stable'] = p_count_plus10 - p_rate_decrease
-                probs['increase'] = 0
-                probs['large_increase'] = 1 - p_count_plus10
+                p_stable = p_count_plus10 - p_rate_decrease
+                p_increase = 0
+                p_large_increase = 1 - p_count_plus10
 
             elif rate_count10 < ratemap and rate_countminus10 > -largemap and rate_countminus10 <= -ratemap:
-                probs['stable'] = p_rate_increase - p_count_minus10
-                probs['decrease'] = p_count_minus10 - p_rate_largedec
+                p_stable = p_rate_increase - p_count_minus10
+                p_decrease = p_count_minus10 - p_rate_largedec
 
             elif rate_count10 < ratemap and rate_countminus10 <= -largemap:
-                probs['stable'] = p_rate_increase - p_count_minus10
-                probs['decrease'] = 0
-                probs['large_decrease'] = p_count_minus10
+                p_stable = p_rate_increase - p_count_minus10
+                p_decrease = 0
+                p_large_decrease = p_count_minus10
 
             elif rate_count10 < largemap and rate_countminus10 > -largemap and rate_countminus10 <= -ratemap and rate_count10 >= ratemap:
-                probs['stable'] = p_count_plus10 - p_count_minus10
-                probs['increase'] = p_rate_largeinc - p_count_plus10
-                probs['decrease'] = p_count_minus10 - p_rate_largedec
+                p_stable = p_count_plus10 - p_count_minus10
+                p_increase = p_rate_largeinc - p_count_plus10
+                p_decrease = p_count_minus10 - p_rate_largedec
 
             elif rate_count10 >= largemap and rate_countminus10 > -largemap and rate_countminus10 <= -ratemap:
-                probs['stable'] = p_count_plus10 - p_count_minus10
-                probs['increase'] = 0
-                probs['large_increase'] = 1 - p_count_plus10
-                probs['decrease'] = p_count_minus10 - p_rate_largedec
+                p_stable = p_count_plus10 - p_count_minus10
+                p_increase = 0
+                p_large_increase = 1 - p_count_plus10
+                p_decrease = p_count_minus10 - p_rate_largedec
 
             elif rate_count10 < largemap and rate_countminus10 <= -largemap and rate_count10 >= ratemap:
-                probs['stable'] = p_count_plus10 - p_count_minus10
-                probs['decrease'] = 0
-                probs['large_decrease'] = p_count_minus10
-                probs['increase'] = p_rate_largeinc - p_count_plus10
+                p_stable = p_count_plus10 - p_count_minus10
+                p_decrease = 0
+                p_large_decrease = p_count_minus10
+                p_increase = p_rate_largeinc - p_count_plus10
 
             elif rate_count10 >= largemap and rate_countminus10 <= -largemap:
-                probs['stable'] = p_count_plus10 - p_count_minus10
-                probs['decrease'] = 0
-                probs['increase'] = 0
-                probs['large_decrease'] = p_count_minus10
-                probs['large_increase'] = 1 - p_count_plus10
+                p_stable = p_count_plus10 - p_count_minus10
+                p_decrease = 0
+                p_increase = 0
+                p_large_decrease = p_count_minus10
+                p_large_increase = 1 - p_count_plus10
 
             else:
-                probs['stable'] = 1
-                probs['increase'] = 0
-                probs['large_increase'] = 0
-                probs['decrease'] = 0
-                probs['large_decrease'] = 0
+                p_stable = 1
+                p_increase = 0
+                p_large_increase = 0
+                p_decrease = 0
+                p_large_decrease = 0
+
+            probs = [p_large_decrease, p_decrease, p_stable, p_increase, p_large_increase]
 
             # Verify probabilities sum to 1
-            total = sum(probs.values())
+            total = sum(probs)
             if abs(total - 1.0) > 0.01:
                 print(f"WARNING: Probabilities don't sum to 1 for {loc}, horizon {horizon}, date {reference_date}: {total:.4f}")
 
-            # Create output rows
-            for category, probability in probs.items():
-                results.append({
-                    'reference_date': reference_date,
-                    'target_end_date': target_end_date,
-                    'horizon': horizon,
-                    'location': loc,
-                    'target': 'wk flu hosp rate change',
-                    'output_type': 'pmf',
-                    'output_type_id': category,
-                    'value': probability,
-                    'Model': 'Median Epistorm Ensemble'
-                })
+            # Write results directly into pre-allocated arrays
+            idx = valid_count * 5
+            for j in range(5):
+                res_ref_dates[idx + j] = reference_date
+                res_target_dates[idx + j] = target_end_date
+                res_horizons[idx + j] = horizon
+                res_locations[idx + j] = loc
+                res_categories[idx + j] = categories[j]
+                res_values[idx + j] = probs[j]
+            valid_count += 1
 
         except Exception as e:
             print(f"Error processing {loc}, horizon {horizon}, reference_date {reference_date}: {str(e)}")
             continue
 
-    # Create DataFrame
-    results_df = pd.DataFrame(results)
-
-    # Reorder columns
-    results_df = results_df[[
-        'target_end_date', 'horizon', 'output_type_id', 'value',
-        'location', 'target', 'Model', 'output_type', 'reference_date'
-    ]]
+    # Trim arrays to valid entries
+    n_valid = valid_count * 5
+    results_df = pd.DataFrame({
+        'target_end_date': res_target_dates[:n_valid],
+        'horizon': res_horizons[:n_valid],
+        'output_type_id': res_categories[:n_valid],
+        'value': res_values[:n_valid],
+        'location': res_locations[:n_valid],
+        'target': 'wk flu hosp rate change',
+        'Model': model_name,
+        'output_type': 'pmf',
+        'reference_date': res_ref_dates[:n_valid],
+    })
 
     return results_df
 

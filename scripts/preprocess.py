@@ -99,10 +99,10 @@ def export_historical_seasons(target_data):
     print(f"  Wrote historical_seasons.json ({len(result)} locations)")
 
 
-def export_quantile_trajectories(quantile_ensemble, locations):
+def export_quantile_trajectories(quantile_ensemble, locations, subfolder="trajectories"):
     """Export quantile-based trajectory data per location for fan chart."""
-    print("\nExporting per-location quantile trajectory files...")
-    traj_out_dir = OUT_DIR / "trajectories"
+    print(f"\nExporting per-location quantile trajectory files to {subfolder}/...")
+    traj_out_dir = OUT_DIR / subfolder
     os.makedirs(traj_out_dir, exist_ok=True)
 
     loc_pop = dict(zip(locations["location"], locations["population"]))
@@ -162,9 +162,10 @@ def export_quantile_trajectories(quantile_ensemble, locations):
     print(f"  Wrote quantile trajectory files for {len(all_fips)} locations")
 
 
-def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations):
+def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations,
+                          output_name="dashboard_data.json"):
     """Export dashboard_data.json with trend/activity probabilities."""
-    print("\nExporting dashboard_data.json...")
+    print(f"\nExporting {output_name}...")
 
     loc_pop = dict(zip(locations["location"], locations["population"]))
     loc_name_map = dict(zip(locations["location"], locations["location_name"]))
@@ -315,9 +316,9 @@ def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ense
         print(f"  {ref_date_str}: {len(ref_data)} locations")
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    with open(OUT_DIR / "dashboard_data.json", "w") as f:
+    with open(OUT_DIR / output_name, "w") as f:
         json.dump(output, f)
-    print(f"Wrote dashboard_data.json")
+    print(f"Wrote {output_name}")
 
 
 def main():
@@ -388,11 +389,43 @@ def main():
         json.dump(locations_out, f)
     print(f"\nWrote locations.json ({len(locations_out)} locations)")
 
-    # --- Dashboard data ---
+    # --- Dashboard data (Median ensemble) ---
     if not categorical_ensemble.empty and not activity_ensemble.empty:
         export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations)
     else:
         print("\nWARNING: Missing categorical or activity ensemble data, skipping dashboard_data.json")
+
+    # --- Dashboard data (LOP ensemble) ---
+    lop_quant_path = DATA_DIR / "quantile_ensemble_LOP.pq"
+    lop_cat_path = DATA_DIR / "categorical_ensemble_LOP.pq"
+    lop_act_path = DATA_DIR / "activity_level_ensemble_LOP.pq"
+
+    if lop_quant_path.exists():
+        lop_quant = pd.read_parquet(lop_quant_path)
+        lop_quant['location'] = lop_quant['location'].astype(str)
+
+        # Use LOP-specific categorical/activity data if available, else fall back to Median
+        if lop_cat_path.exists():
+            lop_cat = pd.read_parquet(lop_cat_path)
+            lop_cat['location'] = lop_cat['location'].astype(str)
+        else:
+            print("  WARNING: LOP categorical data not found, using Median categorical data")
+            lop_cat = categorical_ensemble
+
+        if lop_act_path.exists():
+            lop_act = pd.read_parquet(lop_act_path)
+            lop_act['location'] = lop_act['location'].astype(str)
+        else:
+            print("  WARNING: LOP activity data not found, using Median activity data")
+            lop_act = activity_ensemble
+
+        if not lop_cat.empty and not lop_act.empty:
+            export_dashboard_data(lop_cat, lop_act, lop_quant, locations,
+                                  output_name="dashboard_data_lop.json")
+        else:
+            print("\nWARNING: Missing categorical or activity data, skipping dashboard_data_lop.json")
+    else:
+        print("\nWARNING: LOP quantile data not found, skipping dashboard_data_lop.json")
 
     # --- Target data ---
     export_target_data(target_data)
@@ -400,8 +433,18 @@ def main():
     # --- Historical seasons ---
     export_historical_seasons(target_data)
 
-    # --- Per-location quantile trajectories ---
-    export_quantile_trajectories(quantile_ensemble, locations)
+    # --- Per-location quantile trajectories (Median ensemble) ---
+    export_quantile_trajectories(quantile_ensemble, locations, subfolder="trajectories")
+
+    # --- Per-location quantile trajectories (LOP ensemble) ---
+    lop_path = DATA_DIR / "quantile_ensemble_LOP.pq"
+    if lop_path.exists():
+        lop_ensemble = pd.read_parquet(lop_path)
+        lop_ensemble['location'] = lop_ensemble['location'].astype(str)
+        print(f"  LOP ensemble: {len(lop_ensemble):,} rows")
+        export_quantile_trajectories(lop_ensemble, locations, subfolder="trajectories_lop")
+    else:
+        print("  WARNING: quantile_ensemble_LOP.pq not found, skipping LOP trajectories")
 
     # --- Evaluation data ---
     export_evaluation_data()
