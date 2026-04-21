@@ -24,9 +24,9 @@ const SEASON_STYLES = {
 
 // Fan chart band styling
 const FAN_STYLES = {
-    "95": { fill: "#b0d4e8", opacity: 0.35, label: "95% PI", lower: "p025", upper: "p975" },
-    "90": { fill: "#6faed0", opacity: 0.35, label: "90% PI", lower: "p05", upper: "p95" },
-    "50": { fill: "#4682B4", opacity: 0.3, label: "50% PI", lower: "p25", upper: "p75" }
+    "95": { fill: "#a8d5a2", opacity: 0.4, label: "95% PI", lower: "p025", upper: "p975" },
+    "90": { fill: "#5db85a", opacity: 0.4, label: "90% PI", lower: "p05", upper: "p95" },
+    "50": { fill: "#2e8b2e", opacity: 0.4, label: "50% PI", lower: "p25", upper: "p75" }
 };
 
 // Store aligned season data for tooltip lookup
@@ -63,6 +63,20 @@ function initTrajectoryChart() {
     // Event listeners
     d3.select("#traj-location").on("change", function () {
         loadAndDrawTrajectories(this.value);
+    });
+
+    // Ensemble toggle within trajectory chart
+    d3.selectAll(".traj-ensemble-btn").on("click", function () {
+        const model = d3.select(this).attr("data-ensemble");
+        AppState.ensembleModel = model;
+        // Sync both toggles (map + trajectory)
+        d3.selectAll(".ensemble-btn").classed("active", false);
+        d3.select(`.ensemble-btn[data-ensemble="${model}"]`).classed("active", true);
+        d3.selectAll(".traj-ensemble-btn").classed("active", false);
+        d3.select(this).classed("active", true);
+        updateAll();
+        const fips = d3.select("#traj-location").property("value");
+        loadAndDrawTrajectories(fips);
     });
 
     // Initialize context panel
@@ -156,10 +170,11 @@ function buildActivitySection() {
 // --- Main draw function ---
 
 async function loadAndDrawTrajectories(fips) {
+    const folder = AppState.ensembleModel === "lop" ? "trajectories_lop" : "trajectories";
     try {
-        trajData = await d3.json(`data/trajectories/${fips}.json`);
+        trajData = await d3.json(`data/${folder}/${fips}.json`);
     } catch (e) {
-        console.warn(`No trajectory data for ${fips}`);
+        console.warn(`No trajectory data for ${fips} in ${folder}`);
         trajData = null;
     }
     drawTrajectories();
@@ -332,7 +347,7 @@ function drawTrajectories() {
                 .datum(medianPoints)
                 .attr("d", line)
                 .attr("fill", "none")
-                .attr("stroke", "#4682B4")
+                .attr("stroke", "#1a7a1a")
                 .attr("stroke-width", 2.5);
 
             medianG.selectAll(".median-dot")
@@ -342,7 +357,7 @@ function drawTrajectories() {
                 .attr("cx", d => trajX(d.date))
                 .attr("cy", d => trajY(d.value))
                 .attr("r", 3)
-                .attr("fill", "#4682B4")
+                .attr("fill", "#1a7a1a")
                 .attr("stroke", "#fff")
                 .attr("stroke-width", 1)
                 .style("pointer-events", "none");
@@ -356,41 +371,60 @@ function drawTrajectories() {
     const inSample = recentObserved.filter(d => d.date < refDateObj);
     const outOfSample = recentObserved.filter(d => d.date >= refDateObj);
 
-    if (recentObserved.length > 1) {
-        const line = d3.line()
-            .x(d => trajX(d.date))
-            .y(d => trajY(d.value));
+    const line = d3.line()
+        .x(d => trajX(d.date))
+        .y(d => trajY(d.value));
 
+    // Draw in-sample observed line (solid, dark)
+    if (inSample.length > 1) {
         obsG.append("path")
-            .datum(recentObserved)
+            .datum(inSample)
             .attr("d", line)
             .attr("fill", "none")
             .attr("stroke", "#1a1a1a")
             .attr("stroke-width", 2);
-
-        obsG.selectAll(".obs-in")
-            .data(inSample)
-            .join("circle")
-            .attr("class", "obs-in")
-            .attr("cx", d => trajX(d.date))
-            .attr("cy", d => trajY(d.value))
-            .attr("r", 3.5)
-            .attr("fill", "#1a1a1a")
-            .attr("stroke", "none")
-            .style("pointer-events", "none");
-
-        obsG.selectAll(".obs-out")
-            .data(outOfSample)
-            .join("circle")
-            .attr("class", "obs-out")
-            .attr("cx", d => trajX(d.date))
-            .attr("cy", d => trajY(d.value))
-            .attr("r", 3.5)
-            .attr("fill", "#fff")
-            .attr("stroke", "#1a1a1a")
-            .attr("stroke-width", 1.5)
-            .style("pointer-events", "none");
     }
+
+    // Draw out-of-sample observed line (dashed, lighter)
+    // Connect from last in-sample point to first out-of-sample point
+    if (outOfSample.length > 0) {
+        const oosLine = inSample.length > 0
+            ? [inSample[inSample.length - 1], ...outOfSample]
+            : outOfSample;
+
+        obsG.append("path")
+            .datum(oosLine)
+            .attr("d", line)
+            .attr("fill", "none")
+            .attr("stroke", "#888")
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "5,3");
+    }
+
+    // In-sample dots (solid)
+    obsG.selectAll(".obs-in")
+        .data(inSample)
+        .join("circle")
+        .attr("class", "obs-in")
+        .attr("cx", d => trajX(d.date))
+        .attr("cy", d => trajY(d.value))
+        .attr("r", 3.5)
+        .attr("fill", "#1a1a1a")
+        .attr("stroke", "none")
+        .style("pointer-events", "none");
+
+    // Out-of-sample dots (open, lighter)
+    obsG.selectAll(".obs-out")
+        .data(outOfSample)
+        .join("circle")
+        .attr("class", "obs-out")
+        .attr("cx", d => trajX(d.date))
+        .attr("cy", d => trajY(d.value))
+        .attr("r", 3.5)
+        .attr("fill", "#fff")
+        .attr("stroke", "#888")
+        .attr("stroke-width", 1.5)
+        .style("pointer-events", "none");
 
     // --- Interaction overlay (hover line + tooltip + click-to-jump) ---
     const interG = trajChartG.select(".layer-interaction");
@@ -565,7 +599,7 @@ function updateTrajLegend() {
     const medianItem = container.append("span").attr("class", "traj-legend-item");
     medianItem.append("span")
         .attr("class", "traj-legend-swatch")
-        .style("background", "#4682B4")
+        .style("background", "#1a7a1a")
         .style("height", "2px");
     medianItem.append("span").text("Median");
 
@@ -631,10 +665,10 @@ function showHoverTooltip(event, nearestDate, recentObserved, refDateObj, refQua
             const lo90 = q.p05[dateIdx];
             const hi90 = q.p95[dateIdx];
             if (median != null) {
-                html += `<div class="traj-tip-row"><span class="traj-tip-swatch" style="background:#4682B4"></span>Median: <strong>${valFmt(median)}</strong></div>`;
+                html += `<div class="traj-tip-row"><span class="traj-tip-swatch" style="background:#1a7a1a"></span>Median: <strong>${valFmt(median)}</strong></div>`;
             }
             if (lo90 != null && hi90 != null) {
-                html += `<div class="traj-tip-row"><span class="traj-tip-swatch" style="background:#6faed0;opacity:0.5"></span>90% PI: ${valFmt(lo90)} – ${valFmt(hi90)}</div>`;
+                html += `<div class="traj-tip-row"><span class="traj-tip-swatch" style="background:#5db85a;opacity:0.7"></span>90% PI: ${valFmt(lo90)} – ${valFmt(hi90)}</div>`;
             }
         }
     }

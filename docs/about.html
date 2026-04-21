@@ -5,23 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About — Influenza Hospitalization Forecast</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] } };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
     <style>
         .about-page {
-            max-width: 680px;
+            max-width: 920px;
             margin: 0 auto;
             padding: 40px 24px 80px;
             font-family: "Helvetica Neue", Arial, sans-serif;
             color: #333;
             line-height: 1.7;
+            background: #f7f7f7;
         }
         .about-page h2 {
             font-size: 22px;
             font-weight: 700;
             color: #1a1a1a;
-            margin: 32px 0 12px;
+            margin: 36px 0 12px;
         }
         .about-page h2:first-of-type {
             margin-top: 20px;
+        }
+        .about-page h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 24px 0 8px;
         }
         .about-page p {
             font-size: 14px;
@@ -33,16 +45,40 @@
             padding: 0;
         }
         .about-page li {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+        }
+        .model-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin: 12px 0 20px;
+        }
+        .model-table th, .model-table td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .model-table th {
+            font-weight: 600;
+            color: #555;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .model-table tr:hover {
+            background: #f8f9fa;
         }
     </style>
 </head>
 <body>
     <header>
         <div class="header-row">
-            <div>
-                <h1>Influenza Hospitalization Forecast</h1>
-                <p class="subtitle">Weekly forecasts powered by EpyStrain model at Northeastern University</p>
+            <div class="header-brand">
+                <img src="assets/epistorm-logo-small.png" alt="Epistorm Ensemble" class="header-logo">
+                <div>
+                    <h1>Influenza Hospitalization Forecast</h1>
+                    <p class="subtitle">Weekly forecasts powered by the Epistorm Ensemble at Northeastern University</p>
+                </div>
             </div>
             <nav class="header-nav">
                 <a class="nav-link" href="index.html">Dashboard</a>
@@ -53,11 +89,535 @@
     </header>
 
     <div class="about-page">
-        <p style="margin-top: 60px; color: #999; font-size: 15px; text-align: center;">This page is currently in development. Check back soon.</p>
+        <h2>Overview</h2>
+        <p>The Epistorm Ensemble produces weekly probabilistic forecasts of influenza hospital admissions for all 50 US states, Washington DC, and the US nationally. Forecasts are generated each week for horizons of 1 to 4 weeks ahead and submitted to the CDC's <a href="https://github.com/cdcepi/FluSight-forecast-hub" target="_blank">FluSight Forecast Hub</a>.</p>
+        <p>This dashboard provides an interactive view of the ensemble's forecasts along with evaluation metrics that compare performance against a baseline model and other contributing forecasters.</p>
+
+        <h2>Contributing Models</h2>
+        <p>The ensemble combines quantile forecasts from 10 individual models:</p>
+        <table class="model-table">
+            <thead>
+                <tr><th>Model</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>CEPH-Rtrend_fluH</td><td>Renewal equation method using Bayesian estimation of Rt from hospitalization data</td></tr>
+                <tr><td>Gatech-ensemble_prob</td><td>Ensemble of deep learning attention-based probabilistic architectures with multiple time-series predictors</td></tr>
+                <tr><td>Gatech-ensemble_stat</td><td>Ensemble combining ARIMA, ARGO, ARGO2, and LightGBM with Google Trends data</td></tr>
+                <tr><td>MIGHTE-Joint</td><td>Weighted ensemble of LightGBM, ARIMA, and autoregressive models integrating Google Trends data</td></tr>
+                <tr><td>MIGHTE-Nsemble</td><td>Adaptive ensemble combining ARIMA, LightGBM, and SVM with dynamically updated weights</td></tr>
+                <tr><td>MOBS-EpyStrain_Flu</td><td>Age-structured SLIR compartmental model with contact matrices, vaccination, and seasonal transmissibility</td></tr>
+                <tr><td>MOBS-GLEAM_RL_FLUH</td><td>Reinforcement learning (Q-learning) for selecting optimal GLEAM simulation trajectories</td></tr>
+                <tr><td>NEU_ISI-AdaptiveEnsemble</td><td>Dynamic ensemble combining Flu Scenario Modeling Hub projections, rejecting divergent trajectories</td></tr>
+                <tr><td>NEU_ISI-FluBcast</td><td>Stochastic age-structured compartmental model with behavioral feedback and risk-averse dynamics</td></tr>
+                <tr><td>NU-PGF_FLUH</td><td>Branching process model using probability generating functions with Bayesian inference of Rt</td></tr>
+            </tbody>
+        </table>
+        <p>The CDC's <strong>FluSight-baseline</strong> model is used as a reference for scoring but is not included in the ensemble. The <strong>FluSight-ensemble</strong> (CDC's own ensemble) is also tracked for comparison.</p>
+
+        <h2>Ensemble Methods</h2>
+        <p>Two ensemble methods are available on the dashboard:</p>
+
+        <h3>Median Ensemble</h3>
+        <p>For each quantile level, the ensemble value is the <strong>median</strong> across all contributing models' predictions at that quantile. This is a modified form of the Vincent averaging technique (<a href="https://books.google.com/books?hl=en&lr=&id=s9EsAAAAYAAJ&oi=fnd&pg=PA7&ots=PR_vKHh8bm&sig=e9xVLrSjT8U7XWNTxSNuLh8ZN3Y" target="_blank">Vincent, 1912</a>; <a href="https://royalsocietypublishing.org/rsif/article/20/198/20220659/90292/Context-dependent-representation-of-within-and" target="_blank">Howerton et al., 2023</a>). Using the median rather than the mean makes it robust to outliers and produces well-calibrated intervals.</p>
+
+        <h3>Linear Opinion Pool (LOP) Ensemble</h3>
+        <p>The LOP method (<a href="https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-32/issue-4/The-Opinion-Pool/10.1214/aoms/1177704873.full" target="_blank">Stone, 1961</a>; <a href="https://royalsocietypublishing.org/rsif/article/20/198/20220659/90292/Context-dependent-representation-of-within-and" target="_blank">Howerton et al., 2023</a>) combines the full cumulative distribution functions (CDFs) of each model rather than individual quantiles. For a given value, each model's CDF is evaluated and the results are averaged, producing a blended probability distribution. This approach better captures multi-modal uncertainty and model disagreement.</p>
+
+        <p>Both methods produce forecasts at 23 quantile levels (0.01 to 0.99), which are used to derive prediction intervals, trend categories, and activity level classifications. The figure below illustrates how each method combines six example model distributions (colored lines) into a single ensemble forecast (blue).</p>
+
+        <div style="background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:20px;margin:20px 0">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;font-family:Helvetica Neue,Arial,sans-serif;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:600;color:#555">Method:</span>
+                <button class="ens-toggle-btn active" id="toggle-median-btn" style="font-family:Helvetica Neue,Arial,sans-serif;font-size:12px;padding:5px 16px;border:1px solid #ccc;border-radius:4px;background:#2C5F8A;color:#fff;cursor:pointer">Median</button>
+                <button class="ens-toggle-btn" id="toggle-lop-btn" style="font-family:Helvetica Neue,Arial,sans-serif;font-size:12px;padding:5px 16px;border:1px solid #ccc;border-radius:4px;background:#f7f7f7;color:#555;cursor:pointer">LOP</button>
+            </div>
+            <div style="display:flex;gap:0">
+                <svg id="ens-fan" viewBox="0 0 540 300" style="flex:1"></svg>
+                <svg id="ens-cdf" viewBox="0 0 340 300" style="width:340px"></svg>
+            </div>
+        </div>
+
+        <h2>Forecast Outputs</h2>
+        <h3>Quantile Forecasts</h3>
+        <p>The primary output is a set of quantile predictions for weekly influenza hospital admissions. These are visualized as fan charts on the dashboard, showing the median forecast along with 50% and 95% prediction intervals.</p>
+
+        <h3>Trend Categories</h3>
+        <p>Trend forecasts classify the expected change in hospitalizations into five categories: <em>large decrease</em>, <em>decrease</em>, <em>stable</em>, <em>increase</em>, and <em>large increase</em>. These are derived from the quantile forecasts by computing the probability that the change relative to the most recent observation falls within horizon-specific thresholds based on per-capita rates.</p>
+
+        <h3>Activity Levels</h3>
+        <p>Activity level forecasts classify the expected hospitalization level into four categories: <em>Low</em>, <em>Moderate</em>, <em>High</em>, and <em>Very High</em>. Thresholds are defined for each location using the moving epidemic method applied to historical influenza hospitalization data. Activity level probabilities are computed from the forecast CDF evaluated at each threshold.</p>
+
+        <h2>Data Sources</h2>
+        <ul>
+            <li><strong>Forecast data:</strong> Individual model submissions from the <a href="https://github.com/cdcepi/FluSight-forecast-hub" target="_blank">FluSight Forecast Hub</a></li>
+            <li><strong>Observed data:</strong> Weekly influenza hospital admissions from the FluSight target data (NHSN)</li>
+        </ul>
+
+        <h2>Evaluation Methods</h2>
+
+        <h3>Weighted Interval Score (WIS)</h3>
+        <p>The Weighted Interval Score (<a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008618" target="_blank">Bracher et al., 2021</a>) is a proper scoring rule for quantile forecasts that measures both <strong>sharpness</strong> (how narrow the prediction intervals are) and <strong>calibration</strong> (whether observations fall within the predicted intervals at the expected rate). Lower WIS indicates better forecast accuracy.</p>
+        <p>For a single $(1-\alpha)$ prediction interval with lower bound $l$ and upper bound $u$, the interval score given an observation $y$ is:</p>
+        <p style="text-align:center">$\text{IS}_\alpha(l, u, y) = (u - l) + \frac{2}{\alpha}(l - y)\,\mathbf{1}\{y < l\} + \frac{2}{\alpha}(y - u)\,\mathbf{1}\{y > u\}$</p>
+        <p>The first term rewards sharpness (narrower intervals), while the penalty terms penalize observations that fall outside the interval. The WIS aggregates this across $K = 11$ symmetric prediction intervals and the median forecast $m$:</p>
+        <p style="text-align:center">$\text{WIS} = \frac{1}{K + \frac{1}{2}} \left[ \sum_{k=1}^{K} \frac{\alpha_k}{2} \cdot \text{IS}_{\alpha_k} + \frac{1}{2} \left| m - y \right| \right]$</p>
+        <p>The <strong>WIS ratio</strong> normalizes each model's score against the FluSight-baseline, computed as the ratio of mean scores: $\text{WIS Ratio} = \overline{\text{WIS}}_{\text{model}}\, / \,\overline{\text{WIS}}_{\text{baseline}}$. Values below 1.0 indicate the model outperforms the baseline.</p>
+
+        <div style="max-width:520px;margin:14px auto">
+            <svg id="wis-diagram" viewBox="0 0 380 130" style="width:100%;background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:8px"></svg>
+        </div>
+
+        <h3>Prediction Interval Coverage</h3>
+        <p>Coverage measures calibration — whether prediction intervals contain the observed value at the expected rate (<a href="https://www.pnas.org/doi/10.1073/pnas.2113561119" target="_blank">Cramer et al., 2022</a>). For a given interval level $(1-\alpha)$, coverage is simply the fraction of forecasts where the observation falls within the interval:</p>
+        <p style="text-align:center">$\text{Coverage}_{1-\alpha} = \frac{1}{N} \sum_{i=1}^{N} \mathbf{1}\left\{ l_i^{(\alpha)} \leq y_i \leq u_i^{(\alpha)} \right\}$</p>
+        <p>A well-calibrated 50% prediction interval should contain roughly 50% of observations, and a 95% interval roughly 95%. Points above the diagonal indicate underconfident intervals (too wide); points below indicate overconfident intervals (too narrow).</p>
+
+        <div style="max-width:520px;margin:14px auto">
+            <svg id="cov-diagram" viewBox="0 0 380 150" style="width:100%;background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:8px"></svg>
+        </div>
+
+        <h3>Evaluation Controls</h3>
+        <p>The evaluations page allows filtering by:</p>
+        <ul>
+            <li><strong>Aggregation period:</strong> Full season, last 2 weeks, or last 4 weeks</li>
+            <li><strong>Forecast horizon:</strong> All horizons or individual weeks (1–4)</li>
+            <li><strong>Location:</strong> Hover or click on states to see location-specific metrics</li>
+        </ul>
+
+        <h2>Update Schedule</h2>
+        <p>Forecasts are updated automatically every Thursday. The pipeline fetches the latest model submissions, creates the ensemble forecasts, computes evaluation scores, and deploys the updated dashboard.</p>
+
+        <h2>Acknowledgments</h2>
+        <p>This work is developed at Northeastern University as part of the Epistorm project. The ensemble relies on forecasts contributed by multiple research teams across institutions.</p>
     </div>
 
     <footer class="funding-footer">
-        This work is supported by Cooperative Agreements NU38PW000005 from The Centers for Disease Control and Prevention (CDC) and CSTE and from CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.
+        <div class="footer-logos">
+            <img src="assets/epistorm-logo.png" alt="Epistorm" class="footer-logo">
+            <img src="assets/northeastern-logo.png" alt="Northeastern University" class="footer-logo">
+        </div>
+        <p>This work is supported by CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.</p>
     </footer>
+<script>
+(function() {
+    const FONT = "Helvetica Neue, Arial, sans-serif";
+    const MODEL_COLS = ["#7ec8e3","#e07b54","#90be6d","#f9c74f","#a480cf","#48bfe3"];
+
+    const nModels = 6, nWeeks = 4;
+    const quantileLevels = [0.025, 0.10, 0.25, 0.50, 0.75, 0.90, 0.975];
+    const weeks = d3.range(nWeeks).map(i => i + 1);
+
+    function approxQnorm(p) {
+        const a = [0,-3.0,-1.88,-1.28,-0.67,0,0.67,1.28,1.88,3.0];
+        const ps = [0,0.001,0.025,0.10,0.25,0.50,0.75,0.90,0.975,0.999];
+        for (let i = 1; i < ps.length; i++) {
+            if (p <= ps[i]) {
+                const t = (p - ps[i-1]) / (ps[i] - ps[i-1]);
+                return a[i-1] + t * (a[i] - a[i-1]);
+            }
+        }
+        return 3.0;
+    }
+
+    // Synthetic data — 6 models with different trends and uncertainty
+    const modelData = [];
+    for (let m = 0; m < nModels; m++) {
+        const bases = [140,100,170,120,155,110];
+        const slopes = [18,28,4,30,8,22];
+        const curves = [-1.5,-1.0,-2.0,0.5,-1.8,-0.8];
+        const spreads = [14,30,18,36,12,24];
+        modelData[m] = [];
+        for (let w = 0; w < nWeeks; w++) {
+            const med = bases[m] + slopes[m]*weeks[w] + curves[m]*weeks[w]*weeks[w];
+            const sp = spreads[m] * (1 + w * 0.15); // uncertainty grows with horizon
+            const q = {};
+            quantileLevels.forEach(tau => { q[tau] = med + sp * approxQnorm(tau); });
+            modelData[m][w] = { median: med, quantiles: q };
+        }
+    }
+
+    // Ensemble computations
+    function computeMedianEns(active) {
+        const models = [...active];
+        if (models.length === 0) return null;
+        const result = [];
+        for (let w = 0; w < nWeeks; w++) {
+            const q = {};
+            quantileLevels.forEach(tau => {
+                const vals = models.map(m => modelData[m][w].quantiles[tau]).sort(d3.ascending);
+                q[tau] = d3.median(vals);
+            });
+            result[w] = { quantiles: q, median: q[0.50] };
+        }
+        return result;
+    }
+
+    function computeLopEns(active) {
+        const models = [...active];
+        if (models.length === 0) return null;
+        const result = [];
+        for (let w = 0; w < nWeeks; w++) {
+            const allVals = models.flatMap(m => Object.values(modelData[m][w].quantiles));
+            const xMin = d3.min(allVals) - 25, xMax = d3.max(allVals) + 25;
+            const xGrid = d3.range(150).map(i => xMin + (xMax - xMin) * i / 149);
+
+            function modelCDF(m, x) {
+                const vals = quantileLevels.map(tau => modelData[m][w].quantiles[tau]);
+                if (x <= vals[0]) return quantileLevels[0];
+                if (x >= vals[vals.length-1]) return quantileLevels[quantileLevels.length-1];
+                for (let i = 1; i < vals.length; i++) {
+                    if (x <= vals[i]) {
+                        const t = (x - vals[i-1]) / (vals[i] - vals[i-1]);
+                        return quantileLevels[i-1] + t * (quantileLevels[i] - quantileLevels[i-1]);
+                    }
+                }
+                return quantileLevels[quantileLevels.length-1];
+            }
+
+            const avgCDF = xGrid.map(x => {
+                let sum = 0;
+                for (const m of models) sum += modelCDF(m, x);
+                return { x, cdf: sum / models.length };
+            });
+
+            const q = {};
+            quantileLevels.forEach(tau => {
+                for (let i = 1; i < avgCDF.length; i++) {
+                    if (avgCDF[i].cdf >= tau) {
+                        const t = (tau - avgCDF[i-1].cdf) / (avgCDF[i].cdf - avgCDF[i-1].cdf + 1e-9);
+                        q[tau] = avgCDF[i-1].x + t * (avgCDF[i].x - avgCDF[i-1].x);
+                        return;
+                    }
+                }
+                q[tau] = avgCDF[avgCDF.length-1].x;
+            });
+            result[w] = { quantiles: q, median: q[0.50] };
+        }
+        return result;
+    }
+
+    // Scales
+    const allVals = d3.range(nModels).flatMap(m => d3.range(nWeeks).flatMap(w => Object.values(modelData[m][w].quantiles)));
+    const yDomain = [d3.min(allVals) - 10, d3.max(allVals) + 10];
+    const active = new Set(d3.range(nModels));
+    const cdfWeek = 2; // Week 3 for CDF panel
+    let currentMode = "median";
+
+    const medianEns = computeMedianEns(active);
+    const lopEns = computeLopEns(active);
+
+    // ============ FAN CHART ============
+    function drawFan(ens) {
+        const svg = d3.select("#ens-fan");
+        svg.selectAll("*").remove();
+        const W = 540, H = 300;
+        const margin = {top: 14, right: 70, bottom: 36, left: 50};
+        const iW = W - margin.left - margin.right;
+        const iH = H - margin.top - margin.bottom;
+        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const x = d3.scaleLinear().domain([0.5, nWeeks + 0.5]).range([0, iW]);
+        const y = d3.scaleLinear().domain(yDomain).range([iH, 0]);
+
+        g.append("g").attr("transform", `translate(0,${iH})`)
+            .call(d3.axisBottom(x).tickValues(weeks).tickFormat(d => `Week ${d}`))
+            .selectAll("text").attr("font-family", FONT).attr("font-size","10px");
+        g.append("g").call(d3.axisLeft(y).ticks(5))
+            .selectAll("text").attr("font-family", FONT).attr("font-size","10px");
+        g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-38)
+            .attr("text-anchor","middle").attr("font-family",FONT).attr("font-size","11px").attr("fill","#888").text("Hospitalizations");
+        g.append("text").attr("x",iW/2).attr("y",iH+32).attr("text-anchor","middle")
+            .attr("font-family",FONT).attr("font-size","11px").attr("fill","#888").text("Forecast Horizon");
+
+        // Ensemble bands
+        const area95 = d3.area().x((d,i) => x(weeks[i]))
+            .y0((d,i) => y(ens[i].quantiles[0.025])).y1((d,i) => y(ens[i].quantiles[0.975]))
+            .curve(d3.curveCardinal.tension(0.5));
+        g.append("path").datum(weeks).attr("d", area95)
+            .attr("fill","#4A7FB5").attr("opacity",0.13).attr("stroke","#4A7FB5").attr("stroke-width",0.5).attr("stroke-opacity",0.25);
+
+        const area50 = d3.area().x((d,i) => x(weeks[i]))
+            .y0((d,i) => y(ens[i].quantiles[0.25])).y1((d,i) => y(ens[i].quantiles[0.75]))
+            .curve(d3.curveCardinal.tension(0.5));
+        g.append("path").datum(weeks).attr("d", area50)
+            .attr("fill","#4A7FB5").attr("opacity",0.22).attr("stroke","#4A7FB5").attr("stroke-width",0.5).attr("stroke-opacity",0.3);
+
+        const ensLine = d3.line().x((d,i) => x(weeks[i])).y((d,i) => y(ens[i].median))
+            .curve(d3.curveCardinal.tension(0.5));
+        g.append("path").datum(weeks).attr("d", ensLine)
+            .attr("fill","none").attr("stroke","#2C5F8A").attr("stroke-width",2.5);
+
+        // Model median lines on top
+        for (let m = 0; m < nModels; m++) {
+            const line = d3.line().x((d,i) => x(weeks[i])).y((d,i) => y(modelData[m][i].median))
+                .curve(d3.curveCardinal.tension(0.5));
+            g.append("path").datum(weeks).attr("d", line)
+                .attr("fill","none").attr("stroke", MODEL_COLS[m]).attr("stroke-width",1.8).attr("opacity",0.7);
+        }
+
+        // Labels on last week
+        const lw = nWeeks - 1, lx = x(weeks[lw]) + 6;
+        g.append("text").attr("x",lx).attr("y",y(ens[lw].quantiles[0.975])+3)
+            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#4A7FB5").text("95% PI");
+        g.append("text").attr("x",lx).attr("y",y(ens[lw].quantiles[0.75])+3)
+            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#4A7FB5").text("50% PI");
+        g.append("text").attr("x",lx).attr("y",y(ens[lw].median)+4)
+            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#2C5F8A").attr("font-weight","600").text("Median");
+
+        // Vertical line at CDF week
+        g.append("line").attr("x1",x(weeks[cdfWeek])).attr("x2",x(weeks[cdfWeek]))
+            .attr("y1",0).attr("y2",iH)
+            .attr("stroke","#2C5F8A").attr("stroke-width",1).attr("stroke-dasharray","4,3").attr("opacity",0.5);
+        g.append("text").attr("x",x(weeks[cdfWeek])).attr("y",-3).attr("text-anchor","middle")
+            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#2C5F8A").text("→ see right panel");
+    }
+
+    // ============ CDF PANEL ============
+    function drawCDF(ens, mode) {
+        const svg = d3.select("#ens-cdf");
+        svg.selectAll("*").remove();
+        const W = 340, H = 300;
+        const margin = {top: 22, right: 14, bottom: 36, left: 42};
+        const iW = W - margin.left - margin.right;
+        const iH = H - margin.top - margin.bottom;
+        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+        const wi = cdfWeek;
+        const models = [...active];
+
+        const allQ = d3.range(nModels).flatMap(m => Object.values(modelData[m][wi].quantiles));
+        const xMin = d3.min(allQ) - 10, xMax = d3.max(allQ) + 10;
+        const x = d3.scaleLinear().domain([xMin, xMax]).range([0, iW]);
+        const yS = d3.scaleLinear().domain([0, 1]).range([iH, 0]);
+
+        svg.append("text").attr("x",W/2).attr("y",15).attr("text-anchor","middle")
+            .attr("font-family",FONT).attr("font-size","11px").attr("font-weight","600").attr("fill","#2C5F8A")
+            .text(`Week ${weeks[wi]} — How models are combined`);
+
+        g.append("g").attr("transform",`translate(0,${iH})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".0f")))
+            .selectAll("text").attr("font-family",FONT).attr("font-size","9px");
+        g.append("g").call(d3.axisLeft(yS).ticks(5).tickFormat(d3.format(".0%")))
+            .selectAll("text").attr("font-family",FONT).attr("font-size","9px");
+        g.append("text").attr("x",iW/2).attr("y",iH+32).attr("text-anchor","middle")
+            .attr("font-family",FONT).attr("font-size","10px").attr("fill","#888").text("Hospitalizations");
+        g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-32)
+            .attr("text-anchor","middle").attr("font-family",FONT).attr("font-size","10px").attr("fill","#888").text("Cumulative Probability");
+
+        // Model CDFs
+        for (let m = 0; m < nModels; m++) {
+            const pts = quantileLevels.map(tau => [x(modelData[m][wi].quantiles[tau]), yS(tau)]);
+            g.append("path").datum(pts).attr("d", d3.line().curve(d3.curveBasis))
+                .attr("fill","none").attr("stroke", MODEL_COLS[m]).attr("stroke-width",1.5).attr("opacity",0.4);
+        }
+
+        // Ensemble CDF
+        const ensPts = quantileLevels.map(tau => [x(ens[wi].quantiles[tau]), yS(tau)]);
+        g.append("path").datum(ensPts).attr("d", d3.line().curve(d3.curveBasis))
+            .attr("fill","none").attr("stroke","#2C5F8A").attr("stroke-width",3);
+
+        if (mode === "median") {
+            // Horizontal slices — model dots + median dot
+            const showTaus = [0.10, 0.25, 0.50, 0.75, 0.90];
+            showTaus.forEach(tau => {
+                const yy = yS(tau);
+                g.append("line").attr("x1",0).attr("x2",iW).attr("y1",yy).attr("y2",yy)
+                    .attr("stroke","#ddd").attr("stroke-width",0.6).attr("stroke-dasharray","3,2");
+
+                const vals = models.map(m => modelData[m][wi].quantiles[tau]);
+                // Bracket
+                const sorted = vals.slice().sort(d3.ascending);
+                g.append("line").attr("x1",x(sorted[0])).attr("x2",x(sorted[sorted.length-1]))
+                    .attr("y1",yy).attr("y2",yy)
+                    .attr("stroke","#2C5F8A").attr("stroke-width",0.8).attr("opacity",0.2);
+
+                vals.forEach((v, i) => {
+                    g.append("circle").attr("cx", x(v)).attr("cy", yy).attr("r", 3.5)
+                        .attr("fill", MODEL_COLS[models[i]]).attr("opacity", 0.7)
+                        .attr("stroke","#fff").attr("stroke-width",0.8);
+                });
+
+                const ensVal = ens[wi].quantiles[tau];
+                g.append("circle").attr("cx", x(ensVal)).attr("cy", yy).attr("r", 5.5)
+                    .attr("fill","#2C5F8A").attr("stroke","#fff").attr("stroke-width",2);
+
+                // Label
+                if (tau === 0.50) {
+                    g.append("text").attr("x", x(ensVal) + 10).attr("y", yy + 4)
+                        .attr("font-family",FONT).attr("font-size","10px").attr("fill","#2C5F8A").attr("font-weight","700")
+                        .text("← median of values");
+                }
+                // Quantile label on right
+                g.append("text").attr("x",iW+4).attr("y",yy+3)
+                    .attr("font-family",FONT).attr("font-size","8px").attr("fill","#bbb")
+                    .text(`${(tau*100).toFixed(0)}%`);
+            });
+        } else {
+            // Vertical slices — model prob dots + average dot
+            function interpCDF(m, xVal) {
+                const vals = quantileLevels.map(tau => modelData[m][wi].quantiles[tau]);
+                if (xVal <= vals[0]) return quantileLevels[0];
+                if (xVal >= vals[vals.length-1]) return quantileLevels[quantileLevels.length-1];
+                for (let i = 1; i < vals.length; i++) {
+                    if (xVal <= vals[i]) {
+                        const t = (xVal - vals[i-1]) / (vals[i] - vals[i-1]);
+                        return quantileLevels[i-1] + t * (quantileLevels[i] - quantileLevels[i-1]);
+                    }
+                }
+                return quantileLevels[quantileLevels.length-1];
+            }
+
+            const ensAllVals = Object.values(ens[wi].quantiles);
+            const sampleXs = d3.range(5).map(i => {
+                const t = (i + 0.5) / 5;
+                return d3.min(ensAllVals) + t * (d3.max(ensAllVals) - d3.min(ensAllVals));
+            });
+
+            sampleXs.forEach((xVal, si) => {
+                const xx = x(xVal);
+                g.append("line").attr("x1",xx).attr("x2",xx).attr("y1",0).attr("y2",iH)
+                    .attr("stroke","#ddd").attr("stroke-width",0.6).attr("stroke-dasharray","3,2");
+
+                const cdfVals = models.map(m => interpCDF(m, xVal));
+                const [minC, maxC] = d3.extent(cdfVals);
+                g.append("line").attr("x1",xx).attr("x2",xx)
+                    .attr("y1",yS(minC)).attr("y2",yS(maxC))
+                    .attr("stroke","#2C5F8A").attr("stroke-width",0.8).attr("opacity",0.2);
+
+                cdfVals.forEach((cdf, i) => {
+                    g.append("circle").attr("cx", xx).attr("cy", yS(cdf)).attr("r", 3.5)
+                        .attr("fill", MODEL_COLS[models[i]]).attr("opacity", 0.7)
+                        .attr("stroke","#fff").attr("stroke-width",0.8);
+                });
+
+                const avg = d3.mean(cdfVals);
+                g.append("circle").attr("cx", xx).attr("cy", yS(avg)).attr("r", 5.5)
+                    .attr("fill","#2C5F8A").attr("stroke","#fff").attr("stroke-width",2);
+
+                if (si === 2) {
+                    g.append("text").attr("x", xx + 10).attr("y", yS(avg) - 4)
+                        .attr("font-family",FONT).attr("font-size","10px").attr("fill","#2C5F8A").attr("font-weight","700")
+                        .text("← average of probabilities");
+                }
+            });
+        }
+    }
+
+    // ============ DRAW + TOGGLE ============
+    function draw() {
+        const ens = currentMode === "median" ? medianEns : lopEns;
+        drawFan(ens);
+        drawCDF(ens, currentMode);
+    }
+
+    document.getElementById("toggle-median-btn").addEventListener("click", function() {
+        currentMode = "median";
+        this.style.background = "#2C5F8A"; this.style.color = "#fff";
+        const other = document.getElementById("toggle-lop-btn");
+        other.style.background = "#f7f7f7"; other.style.color = "#555";
+        draw();
+    });
+    document.getElementById("toggle-lop-btn").addEventListener("click", function() {
+        currentMode = "lop";
+        this.style.background = "#2C5F8A"; this.style.color = "#fff";
+        const other = document.getElementById("toggle-median-btn");
+        other.style.background = "#f7f7f7"; other.style.color = "#555";
+        draw();
+    });
+
+    draw();
+
+    // ============ WIS DIAGRAM ============
+    (function() {
+        const svg = d3.select("#wis-diagram");
+        const W = 380, H = 130, F = "Helvetica Neue, Arial, sans-serif";
+        const xS = d3.scaleLinear().domain([60, 280]).range([0, 155]);
+
+        [{label:"Inside — no penalty", obs:150, l:100, u:200, pen:false, ox:0},
+         {label:"Outside — penalty added", obs:240, l:100, u:200, pen:true, ox:196}].forEach(s => {
+            const g = svg.append("g").attr("transform",`translate(${s.ox},0)`);
+            const lx=xS(s.l), ux=xS(s.u), obsX=xS(s.obs), cy=52, bh=18;
+            g.append("text").attr("x",80).attr("y",16).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","10px").attr("fill","#555").text(s.label);
+            g.append("rect").attr("x",lx).attr("y",cy-bh/2).attr("width",ux-lx).attr("height",bh)
+                .attr("fill","#4A7FB5").attr("opacity",0.15).attr("rx",2);
+            [lx,ux].forEach(px => g.append("line").attr("x1",px).attr("x2",px).attr("y1",cy-bh/2).attr("y2",cy+bh/2)
+                .attr("stroke","#4A7FB5").attr("stroke-width",1.5));
+            g.append("text").attr("x",lx).attr("y",cy-bh/2-4).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","8px").attr("fill","#4A7FB5").text("l");
+            g.append("text").attr("x",ux).attr("y",cy-bh/2-4).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","8px").attr("fill","#4A7FB5").text("u");
+            g.append("circle").attr("cx",obsX).attr("cy",cy).attr("r",4.5)
+                .attr("fill",s.pen?"#d94f4f":"#2a9d8f").attr("stroke","#fff").attr("stroke-width",1);
+            g.append("text").attr("x",obsX).attr("y",cy-10).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","8px").attr("font-weight","600")
+                .attr("fill",s.pen?"#d94f4f":"#2a9d8f").text("y");
+            // Width bracket
+            const bY=cy+bh/2+8;
+            g.append("line").attr("x1",lx).attr("x2",ux).attr("y1",bY).attr("y2",bY).attr("stroke","#4A7FB5").attr("stroke-width",0.8);
+            g.append("text").attr("x",(lx+ux)/2).attr("y",bY+11).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","8px").attr("fill","#4A7FB5").text("width");
+            if (s.pen) {
+                g.append("line").attr("x1",ux+2).attr("x2",obsX-4).attr("y1",bY).attr("y2",bY)
+                    .attr("stroke","#d94f4f").attr("stroke-width",1.2);
+                g.append("polygon").attr("points",`${obsX-4},${bY} ${obsX-9},${bY-2.5} ${obsX-9},${bY+2.5}`)
+                    .attr("fill","#d94f4f");
+                g.append("text").attr("x",(ux+obsX)/2).attr("y",bY+11).attr("text-anchor","middle")
+                    .attr("font-family",F).attr("font-size","8px").attr("fill","#d94f4f").text("penalty");
+            }
+            g.append("text").attr("x",80).attr("y",105).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","9px").attr("fill",s.pen?"#d94f4f":"#2a9d8f")
+                .text(s.pen?"Score = width + penalty":"Score = width only");
+        });
+        svg.append("line").attr("x1",W/2).attr("x2",W/2).attr("y1",22).attr("y2",115)
+            .attr("stroke","#e0e0e0").attr("stroke-width",1).attr("stroke-dasharray","3,2");
+        svg.append("text").attr("x",W/2).attr("y",126).attr("text-anchor","middle")
+            .attr("font-family",F).attr("font-size","8px").attr("fill","#bbb")
+            .text("WIS = weighted average across all prediction intervals");
+    })();
+
+    // ============ COVERAGE DIAGRAM ============
+    (function() {
+        const svg = d3.select("#cov-diagram");
+        const W = 380, H = 150, F = "Helvetica Neue, Arial, sans-serif";
+        const margin={left:20,right:50};
+        const xS = d3.scaleLinear().domain([40,260]).range([margin.left, W-margin.right]);
+        const forecasts = [
+            {l:90,u:170,obs:140,in:true},{l:100,u:180,obs:195,in:false},
+            {l:80,u:160,obs:120,in:true},{l:110,u:190,obs:150,in:true},
+            {l:95,u:175,obs:85,in:false},{l:85,u:165,obs:130,in:true},
+        ];
+        const nIn = forecasts.filter(f=>f.in).length;
+        const rowH=16, startY=10;
+
+        forecasts.forEach((f,i) => {
+            const cy=startY+i*rowH+rowH/2;
+            const lx=xS(f.l),ux=xS(f.u),ox=xS(f.obs);
+            svg.append("rect").attr("x",lx).attr("y",cy-4).attr("width",ux-lx).attr("height",8)
+                .attr("fill","#4A7FB5").attr("opacity",0.13).attr("rx",1.5);
+            [lx,ux].forEach(px=>svg.append("line").attr("x1",px).attr("x2",px).attr("y1",cy-4).attr("y2",cy+4)
+                .attr("stroke","#4A7FB5").attr("stroke-width",1));
+            svg.append("circle").attr("cx",ox).attr("cy",cy).attr("r",3.5)
+                .attr("fill",f.in?"#2a9d8f":"#d94f4f").attr("stroke","#fff").attr("stroke-width",0.8);
+            svg.append("text").attr("x",W-margin.right+12).attr("y",cy+3.5).attr("text-anchor","middle")
+                .attr("font-family",F).attr("font-size","11px").attr("fill",f.in?"#2a9d8f":"#d94f4f").text(f.in?"✓":"✗");
+        });
+
+        const sumY = startY + forecasts.length*rowH + 8;
+        svg.append("line").attr("x1",margin.left).attr("x2",W-margin.right+20).attr("y1",sumY).attr("y2",sumY)
+            .attr("stroke","#e0e0e0").attr("stroke-width",1);
+        svg.append("text").attr("x",W/2).attr("y",sumY+16).attr("text-anchor","middle")
+            .attr("font-family",F).attr("font-size","10px").attr("fill","#333")
+            .text(`Coverage = ${nIn}/${forecasts.length} = ${Math.round(nIn/forecasts.length*100)}%  (nominal 50%)`);
+        svg.append("text").attr("x",W/2).attr("y",sumY+30).attr("text-anchor","middle")
+            .attr("font-family",F).attr("font-size","9px").attr("font-weight","600").attr("fill","#e6a817")
+            .text("Underconfident — intervals too wide");
+        // Legend
+        const ly=sumY+44;
+        svg.append("circle").attr("cx",W/2-50).attr("cy",ly).attr("r",3).attr("fill","#2a9d8f");
+        svg.append("text").attr("x",W/2-43).attr("y",ly+3).attr("font-family",F).attr("font-size","8px").attr("fill","#999").text("Inside PI");
+        svg.append("circle").attr("cx",W/2+20).attr("cy",ly).attr("r",3).attr("fill","#d94f4f");
+        svg.append("text").attr("x",W/2+27).attr("y",ly+3).attr("font-family",F).attr("font-size","8px").attr("fill","#999").text("Outside PI");
+    })();
+})();
+</script>
 </body>
 </html>

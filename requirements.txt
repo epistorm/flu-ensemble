@@ -1,0 +1,8 @@
+numpy<2
+pandas
+pyarrow
+requests
+epiweeks
+scipy
+covidcast
+delphi_epidata

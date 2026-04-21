@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Add scripts dir to path so we can import ensemble module
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ensemble import create_ensemble_method1, create_ensemble_method2, create_categorical_ensemble_quantile, create_activity_level_ensemble
+from ensemble import create_ensemble_method1, create_ensemble_method2, create_categorical_ensemble_quantile, create_activity_level_ensemble, get_versioned_data
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -96,30 +96,19 @@ def main():
         print("PART 2: Creating Categorical Ensemble (Trend Predictions)")
         print("=" * 60)
 
-        # Load observations
-        print("\n   Loading observation data...")
-        obs_url = 'https://raw.githubusercontent.com/cdcepi/FluSight-forecast-hub/refs/heads/main/target-data/target-hospital-admissions.csv'
-        obs = pd.read_csv(obs_url)
-        obs['date'] = pd.to_datetime(obs['date'])
-        print(f"   Loaded {len(obs):,} observation rows")
-
-        # Load locations
-        print("\n   Loading location data...")
-        locations_path = DATA_DIR / 'locations.csv'
-
-        if not locations_path.exists():
-            print(f"ERROR: Locations file not found at {locations_path}")
-            sys.exit(1)
-
-        locations = pd.read_csv(locations_path)
-        print(f"   Loaded {len(locations)} locations")
+        # Pre-fetch versioned observation data once for both Median and LOP categorical ensembles
+        print("\n   Fetching versioned observation data (one-time API call)...")
+        obs_vers = get_versioned_data()
+        print(f"   Fetched {len(obs_vers):,} versioned observation rows")
 
         # Use the quantile ensemble to create categorical forecasts
         print("\n   Creating categorical ensemble from quantile ensemble...")
         print("   This may take a few minutes...")
 
         categorical_ensemble = create_categorical_ensemble_quantile(
-            quantile_ensemble[quantile_ensemble.horizon>=0])
+            quantile_ensemble[quantile_ensemble.horizon>=0],
+            obs_vers=obs_vers,
+            model_name='Median Epistorm Ensemble')
 
         if len(categorical_ensemble) == 0:
             print("WARNING: No categorical forecasts generated!")
@@ -145,6 +134,46 @@ def main():
         categorical_output_path = DATA_DIR / 'categorical_ensemble.pq'
         categorical_ensemble.to_parquet(categorical_output_path, index=False)
         print(f"   Saved to {categorical_output_path}")
+
+        # =====================================================================
+        # PART 2b: Create Categorical Ensemble (LOP Method)
+        # =====================================================================
+        print("\n" + "=" * 60)
+        print("PART 2b: Creating Categorical Ensemble from LOP Quantile Ensemble")
+        print("=" * 60)
+
+        print("\n   Creating categorical ensemble from LOP quantile ensemble...")
+        print("   This may take a few minutes...")
+
+        categorical_ensemble_LOP = create_categorical_ensemble_quantile(
+            quantile_ensemble_LOP[quantile_ensemble_LOP.horizon>=0],
+            obs_vers=obs_vers,
+            model_name='LOP Epistorm Ensemble')
+
+        if len(categorical_ensemble_LOP) == 0:
+            print("WARNING: No LOP categorical forecasts generated!")
+            sys.exit(1)
+
+        print(f"   Generated {len(categorical_ensemble_LOP):,} LOP categorical forecast rows")
+
+        # Validate categorical output
+        print("\n   Validating LOP categorical output...")
+        prob_check_LOP = categorical_ensemble_LOP.groupby(
+            ['reference_date', 'horizon', 'location']
+        )['value'].sum()
+
+        invalid_probs_LOP = prob_check_LOP[(prob_check_LOP < 0.99) | (prob_check_LOP > 1.01)]
+        if len(invalid_probs_LOP) > 0:
+            print(f"   WARNING: {len(invalid_probs_LOP)} groups have probabilities not summing to 1")
+            print(invalid_probs_LOP.head())
+        else:
+            print("   All probability distributions sum to 1")
+
+        # Save LOP categorical results
+        print("\n   Saving LOP categorical ensemble...")
+        categorical_LOP_output_path = DATA_DIR / 'categorical_ensemble_LOP.pq'
+        categorical_ensemble_LOP.to_parquet(categorical_LOP_output_path, index=False)
+        print(f"   Saved to {categorical_LOP_output_path}")
 
         # =====================================================================
         # PART 3: Create Activity Level Ensemble
@@ -187,31 +216,62 @@ def main():
         print(f"   Saved to {activity_output_path}")
 
         # =====================================================================
+        # PART 3b: Create Activity Level Ensemble (LOP Method)
+        # =====================================================================
+        print("\n" + "=" * 60)
+        print("PART 3b: Creating Activity Level Ensemble from LOP Quantile Ensemble")
+        print("=" * 60)
+
+        print("\n   Creating activity level ensemble from LOP quantile ensemble...")
+
+        activity_level_ensemble_LOP = create_activity_level_ensemble(
+            quantile_ensemble_path=str(DATA_DIR / 'quantile_ensemble_LOP.pq'),
+            thresholds_path=str(DATA_DIR / 'threshold_levels.csv'),
+            output_path=str(DATA_DIR / 'activity_level_ensemble_LOP.pq')
+        )
+
+        if len(activity_level_ensemble_LOP) == 0:
+            print("WARNING: No LOP activity level forecasts generated!")
+            sys.exit(1)
+
+        print(f"   Generated {len(activity_level_ensemble_LOP):,} LOP activity level forecast rows")
+
+        # Save LOP activity level results
+        print("\n   Saving LOP activity level ensemble...")
+        activity_LOP_output_path = DATA_DIR / 'activity_level_ensemble_LOP.pq'
+        activity_level_ensemble_LOP.to_parquet(activity_LOP_output_path, index=False)
+        print(f"   Saved to {activity_LOP_output_path}")
+
+        # =====================================================================
         # PART 4: Combine Everything
         # =====================================================================
         print("\n" + "=" * 60)
         print("PART 4: Combining All Ensemble Forecasts")
         print("=" * 60)
 
-        # Combine quantile and categorical ensembles
-        if 'model' in quantile_ensemble.columns and 'Model' in categorical_ensemble.columns:
-            categorical_ensemble = categorical_ensemble.rename(columns={'Model': 'model'})
-        elif 'Model' in quantile_ensemble.columns and 'model' in categorical_ensemble.columns:
-            quantile_ensemble = quantile_ensemble.rename(columns={'model': 'Model'})
-        if 'model' in quantile_ensemble_LOP.columns and 'Model' in categorical_ensemble.columns:
-            categorical_ensemble = categorical_ensemble.rename(columns={'Model': 'model'})
-        elif 'Model' in quantile_ensemble_LOP.columns and 'model' in categorical_ensemble.columns:
-            quantile_ensemble_LOP = quantile_ensemble_LOP.rename(columns={'model': 'Model'})
+        # Combine all ensembles
+        # Standardize column names
+        for df_name, df_obj in [('categorical_ensemble', categorical_ensemble),
+                                 ('categorical_ensemble_LOP', categorical_ensemble_LOP)]:
+            if 'Model' in df_obj.columns and 'model' not in df_obj.columns:
+                df_obj.rename(columns={'Model': 'model'}, inplace=True)
 
-        combined_ensemble = pd.concat([quantile_ensemble, categorical_ensemble, quantile_ensemble_LOP], ignore_index=True)
-        combined_all = pd.concat([combined_ensemble, activity_level_ensemble], ignore_index=True)
+        combined_ensemble = pd.concat([
+            quantile_ensemble, quantile_ensemble_LOP,
+            categorical_ensemble, categorical_ensemble_LOP
+        ], ignore_index=True)
+        combined_all = pd.concat([
+            combined_ensemble, activity_level_ensemble, activity_level_ensemble_LOP
+        ], ignore_index=True)
         print(f"   Combined ensemble (with activity levels) has {len(combined_all):,} total rows")
 
         print(f"   Combined ensemble has {len(combined_ensemble):,} total rows")
-        print(f"      - Quantile forecasts: {len(quantile_ensemble):,}")
-        print(f"      - Categorical forecasts: {len(categorical_ensemble):,}")
+        print(f"      - Median Quantile forecasts: {len(quantile_ensemble):,}")
         print(f"      - LOP Quantile forecasts: {len(quantile_ensemble_LOP):,}")
-        print(f"      - Activity level forecasts: {len(activity_level_ensemble):,}")
+        print(f"      - Median Categorical forecasts: {len(categorical_ensemble):,}")
+        print(f"      - LOP Categorical forecasts: {len(categorical_ensemble_LOP):,}")
+        print(f"      - Median Activity level forecasts: {len(activity_level_ensemble):,}")
+        print(f"      - LOP Activity level forecasts: {len(activity_level_ensemble_LOP):,}")
 
         # Save combined
         combined_path = DATA_DIR / 'ensemble_forecasts.pq'

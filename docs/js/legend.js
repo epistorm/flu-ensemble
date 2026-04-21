@@ -65,12 +65,12 @@ function drawAdmissionsLegend(container) {
 
     const isPerCap = AppState.admissionsRate === "percapita";
     const fmt = isPerCap ? d3.format(",.1f") : d3.format(",.0f");
-    const unitLabel = isPerCap ? "Per 100k" : "Hosp.";
+    const unitLabel = isPerCap ? "Per 100k" : "Hospitalizations";
 
-    const gradientH = 80;
-    const barW = 16;
-    const svgWidth = 130;
-    const svgHeight = gradientH + 24;
+    const barW = 160;
+    const barH = 10;
+    const svgWidth = barW + 10;
+    const svgHeight = barH + 38;
 
     const svg = container.append("svg")
         .attr("width", svgWidth)
@@ -79,8 +79,8 @@ function drawAdmissionsLegend(container) {
     const defs = svg.append("defs");
     const gradient = defs.append("linearGradient")
         .attr("id", "admissions-gradient")
-        .attr("x1", "0%").attr("x2", "0%")
-        .attr("y1", "100%").attr("y2", "0%");
+        .attr("x1", "0%").attr("x2", "100%")
+        .attr("y1", "0%").attr("y2", "0%");
 
     const nStops = 10;
     for (let i = 0; i <= nStops; i++) {
@@ -91,42 +91,42 @@ function drawAdmissionsLegend(container) {
     }
 
     const g = svg.append("g")
-        .attr("transform", "translate(2, 2)");
+        .attr("transform", "translate(2, 16)");
+
+    // Unit label above the bar
+    g.append("text")
+        .attr("x", 0)
+        .attr("y", -4)
+        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+        .attr("font-size", "10px")
+        .attr("fill", "#666")
+        .text(unitLabel);
 
     g.append("rect")
         .attr("width", barW)
-        .attr("height", gradientH)
+        .attr("height", barH)
         .attr("rx", 2)
         .attr("fill", "url(#admissions-gradient)")
         .attr("stroke", "#ccc")
         .attr("stroke-width", 0.5);
 
-    // Top label (max)
+    // Left label (0)
     g.append("text")
-        .attr("x", barW + 6)
-        .attr("y", 4)
-        .attr("dominant-baseline", "hanging")
-        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-        .attr("font-size", "10px")
-        .attr("fill", "#666")
-        .text(fmt(maxVal));
-
-    // Bottom label (0)
-    g.append("text")
-        .attr("x", barW + 6)
-        .attr("y", gradientH - 2)
-        .attr("dominant-baseline", "auto")
+        .attr("x", 0)
+        .attr("y", barH + 12)
         .attr("font-family", "Helvetica Neue, Arial, sans-serif")
         .attr("font-size", "10px")
         .attr("fill", "#666")
         .text("0");
 
-    // Unit label below
+    // Right label (max)
     g.append("text")
-        .attr("x", 0)
-        .attr("y", gradientH + 14)
+        .attr("x", barW)
+        .attr("y", barH + 12)
+        .attr("text-anchor", "end")
         .attr("font-family", "Helvetica Neue, Arial, sans-serif")
         .attr("font-size", "10px")
         .attr("fill", "#666")
-        .text(unitLabel);
+        .text(fmt(maxVal));
+
 }
