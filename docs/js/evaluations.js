@@ -536,7 +536,7 @@ function drawHoverCoverageCalibration(fips) {
         .attr("preserveAspectRatio", "xMidYMid meet");
     svg.selectAll("*").remove();
 
-    const margin = { top: 22, right: 12, bottom: 34, left: 44 };
+    const margin = { top: 22, right: 12, bottom: 34, left: 52 };
     const innerW = EVAL_TS_W - margin.left - margin.right;
     const innerH = EVAL_TS_H - margin.top - margin.bottom;
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
@@ -728,7 +728,7 @@ function drawHoverWisTimeSeries(fips) {
 
     // Left y-axis label
     g.append("text").attr("transform", "rotate(-90)")
-        .attr("x", -innerH / 2).attr("y", -30)
+        .attr("x", -innerH / 2).attr("y", -40)
         .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
         .attr("font-size", "8px").attr("fill", "#666").text(getMetricLabel());
 
