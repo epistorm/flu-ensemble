@@ -646,7 +646,7 @@ function drawHoverWisTimeSeries(fips) {
         .attr("preserveAspectRatio", "xMidYMid meet");
     svg.selectAll("*").remove();
 
-    const margin = { top: 22, right: 40, bottom: 30, left: 52 };
+    const margin = { top: 22, right: 56, bottom: 30, left: 52 };
     const innerW = EVAL_TS_W - margin.left - margin.right;
     const innerH = EVAL_TS_H - margin.top - margin.bottom;
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
