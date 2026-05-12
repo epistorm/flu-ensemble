@@ -646,7 +646,7 @@ function drawHoverWisTimeSeries(fips) {
         .attr("preserveAspectRatio", "xMidYMid meet");
     svg.selectAll("*").remove();
 
-    const margin = { top: 22, right: 40, bottom: 30, left: 40 };
+    const margin = { top: 22, right: 40, bottom: 30, left: 52 };
     const innerW = EVAL_TS_W - margin.left - margin.right;
     const innerH = EVAL_TS_H - margin.top - margin.bottom;
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
@@ -716,7 +716,7 @@ function drawHoverWisTimeSeries(fips) {
 
         // Right y-axis label
         g.append("text").attr("transform", "rotate(90)")
-            .attr("x", innerH / 2).attr("y", -innerW - 30)
+            .attr("x", innerH / 2).attr("y", -innerW - 38)
             .attr("text-anchor", "middle").attr("font-family", EVAL_FONT)
             .attr("font-size", "8px").attr("fill", "#999").text("Hospitalizations");
     }
