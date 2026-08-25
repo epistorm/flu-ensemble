@@ -151,6 +151,43 @@ h1 {
     gap: 8px;
     margin-left: auto;
     margin-bottom: 6px;
+    align-items: center;
+}
+
+.season-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+}
+
+.season-select {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    color: #1a1a1a;
+    cursor: pointer;
+}
+
+.season-select:hover { border-color: #999; }
+
+.ensemble-disclaimer {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #8a6d1a;
+    background: #fdf6e3;
+    border: 1px solid #f0e0a8;
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin: 8px 0;
 }
 
 .tab-action {
@@ -2142,4 +2179,42 @@ h1 {
     .eval-bottom-row {
         flex-direction: column;
     }
+}
+
+/* --- Model Comparison location selector (nicer dropdown) --- */
+.eval-compare-loc-group {
+    display: block;
+    margin: 6px 0 16px;
+}
+.eval-compare-loc-group .control-title {
+    margin-bottom: 5px;
+    color: #555;
+}
+.eval-compare-loc-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    border: 1px solid #d5d9de;
+    border-radius: 7px;
+    padding: 8px 34px 8px 12px;
+    min-width: 200px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.eval-compare-loc-group select:hover {
+    border-color: #9aa3ad;
+}
+.eval-compare-loc-group select:focus {
+    outline: none;
+    border-color: #4682B4;
+    box-shadow: 0 0 0 3px rgba(70, 130, 180, 0.15);
 }

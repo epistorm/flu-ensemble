@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evaluations — Influenza Hospitalization Forecast</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
 </head>
@@ -74,6 +74,10 @@
                             </div>
                         </div>
                     </div>
+                    <div class="control-group" id="eval-season-group" style="display:none;">
+                        <div class="control-title">Season</div>
+                        <select id="eval-season-select" class="season-select"></select>
+                    </div>
                     <div class="control-group">
                         <div class="control-title">Aggregation</div>
                         <div class="seg-group eval-agg-control" id="eval-agg-buttons">
@@ -109,6 +113,11 @@
             </summary>
             <p class="eval-subtitle">WIS relative to baseline and prediction interval coverage across all models</p>
 
+            <div class="control-group eval-compare-loc-group">
+                <div class="control-title">Location</div>
+                <select id="eval-compare-location" class="season-select"></select>
+            </div>
+
             <div class="card eval-bottom-card">
                 <div class="eval-bottom-row">
                     <!-- Left: Box plot -->
@@ -143,6 +152,6 @@
     <!-- Tooltip -->
     <div class="tooltip" id="eval-tooltip"></div>
 
-    <script src="js/evaluations.js"></script>
+    <script src="js/evaluations.js?v=9"></script>
 </body>
 </html>

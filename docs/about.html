@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About — Influenza Hospitalization Forecast</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
         window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] } };
@@ -113,6 +113,8 @@
             </tbody>
         </table>
         <p>The CDC's <strong>FluSight-baseline</strong> model is used as a reference for scoring but is not included in the ensemble. The <strong>FluSight-ensemble</strong> (CDC's own ensemble) is also tracked for comparison.</p>
+
+        <p class="season-caveat"><strong>A note on past seasons:</strong> ensemble membership has grown over time — roughly 4 contributing models in 2023-24, 7 in 2024-25, and 10 in 2025-26 — so retrospective ensembles and cross-season comparisons are not strictly like-for-like. In particular, <strong>MOBS-GLEAM_FLUH</strong> (2023-24, 2024-25) and <strong>MOBS-GLEAM_RL_FLUH</strong> (2025-26) are two distinct MOBS models rather than a rename, and <strong>NU_UCSD-GLEAM_AI_FLUH</strong> contributed only in 2023-24. Each season's forecast uses whichever models submitted that week.</p>
 
         <h2>Ensemble Methods</h2>
         <p>Two ensemble methods are available on the dashboard:</p>

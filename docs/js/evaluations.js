@@ -13,6 +13,8 @@ let evalFipsToAbbr = {};
 let evalSelectedModel = "Median Epistorm Ensemble";
 let evalMetric = "wis_relative"; // "wis_relative", "wis_raw", "cov50", "cov95"
 let evalAgg = "last4";           // "season", "last2", "last4"
+let evalSeason = null;           // selected season label; null = latest
+let evalCompareLocation = "all"; // Model Comparison location filter; "all" = every location
 let evalSelectedHorizons = null; // null = all, or Set of ints
 let evalBoxLogScale = false;
 let evalHoveredFips = null;      // null = show US
@@ -40,12 +42,44 @@ const MODEL_PALETTE = [
 
 // ====================== HELPERS ======================
 
-/** Get the set of reference dates for the current aggregation period */
+/** Get the set of reference dates for the current aggregation period,
+ *  scoped to the selected season when season metadata is available. */
 function getAggDates() {
-    const allDates = evalWisMeta.reference_dates;
+    let allDates = evalWisMeta.reference_dates;
+    if (evalSeason && evalWisMeta.date_seasons) {
+        const scoped = allDates.filter(d => evalWisMeta.date_seasons[d] === evalSeason);
+        if (scoped.length) allDates = scoped;
+    }
     if (evalAgg === "season") return allDates;
     const n = evalAgg === "last2" ? 2 : 4;
     return allDates.slice(-n);
+}
+
+/** True if the selected eval season is the latest (in-progress) one. */
+function isCurrentEvalSeason() {
+    const s = (evalWisMeta && evalWisMeta.seasons) || [];
+    return !s.length || evalSeason === s[s.length - 1];
+}
+
+/** Show rolling-window aggregation only for the current season; past seasons
+ *  are complete, so restrict them to "Full Season". */
+function updateAggControlsForSeason() {
+    const current = isCurrentEvalSeason();
+    document.querySelectorAll(".eval-agg-btn").forEach(btn => {
+        const rolling = btn.dataset.agg === "last2" || btn.dataset.agg === "last4";
+        btn.style.display = (rolling && !current) ? "none" : "";
+    });
+    if (!current && evalAgg !== "season") {
+        evalAgg = "season";
+        document.querySelectorAll(".eval-agg-btn").forEach(b =>
+            b.classList.toggle("active", b.dataset.agg === "season"));
+    }
+}
+
+/** True if a reference date belongs to the selected season (or no season set). */
+function inSelectedSeason(dateStr) {
+    if (!evalSeason || !evalWisMeta || !evalWisMeta.date_seasons) return true;
+    return evalWisMeta.date_seasons[dateStr] === evalSeason;
 }
 
 /** Filter rows by current aggregation dates and horizons */
@@ -153,7 +187,16 @@ async function initEvaluations() {
         ]);
 
         evalWisRows = wis.rows;
-        evalWisMeta = { models: wis.models, reference_dates: wis.reference_dates };
+        evalWisMeta = {
+            models: wis.models,
+            reference_dates: wis.reference_dates,
+            seasons: wis.seasons || [],
+            date_seasons: wis.reference_date_seasons || {},
+        };
+        // Default to the most recent season present.
+        evalSeason = (evalWisMeta.seasons.length
+            ? evalWisMeta.seasons[evalWisMeta.seasons.length - 1]
+            : null);
         evalCovRows = coverage.rows;
         evalCovMeta = { models: coverage.models, pi_levels: coverage.pi_levels };
         evalLocations = locations;
@@ -191,6 +234,18 @@ function updateAll() {
     drawBoxPlot();
     drawCoveragePlot();
     updateInsights();
+}
+
+// Single source of truth for the focused location. Setting it keeps the map
+// lock (top section) and the Model Comparison location filter (bottom section)
+// in sync. Pass a FIPS id to focus a state, or "all"/null for national.
+function setEvalLocation(fips) {
+    const national = (fips == null || fips === "all");
+    evalLockedFips = national ? null : fips;
+    evalCompareLocation = national ? "all" : fips;
+    const sel = document.getElementById("eval-compare-location");
+    if (sel) sel.value = evalCompareLocation;
+    updateAll();
 }
 
 function updateInsights() {
@@ -270,6 +325,48 @@ function setupEvalControls() {
         });
     });
 
+    // Season selector (only meaningful when >1 season is available)
+    const seasonSel = document.getElementById("eval-season-select");
+    if (seasonSel) {
+        const seasons = evalWisMeta.seasons || [];
+        seasonSel.innerHTML = "";
+        seasons.slice().reverse().forEach(s => {
+            const opt = document.createElement("option");
+            opt.value = s; opt.textContent = s;
+            if (s === evalSeason) opt.selected = true;
+            seasonSel.appendChild(opt);
+        });
+        const wrap = document.getElementById("eval-season-group");
+        if (wrap) wrap.style.display = seasons.length > 1 ? "" : "none";
+        seasonSel.addEventListener("change", () => {
+            evalSeason = seasonSel.value;
+            updateAggControlsForSeason();
+            updateAll();
+        });
+    }
+
+    // Rolling windows only apply to the in-progress season; past seasons are
+    // complete, so only "Full Season" is offered for them.
+    updateAggControlsForSeason();
+
+    // Model Comparison location filter (default: all locations)
+    const cmpLocSel = document.getElementById("eval-compare-location");
+    if (cmpLocSel) {
+        const opts = [{ fips: "all", name: "All Locations" }]
+            .concat((evalLocations || []).slice().sort((a, b) => a.name.localeCompare(b.name)));
+        cmpLocSel.innerHTML = "";
+        opts.forEach(l => {
+            const o = document.createElement("option");
+            o.value = l.fips;
+            o.textContent = l.fips === "US" ? "United States" : l.name;
+            cmpLocSel.appendChild(o);
+        });
+        cmpLocSel.value = evalCompareLocation;
+        cmpLocSel.addEventListener("change", () => {
+            setEvalLocation(cmpLocSel.value);
+        });
+    }
+
     // Horizon buttons (multi-select)
     document.querySelectorAll(".eval-hz-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -311,10 +408,7 @@ function setupEvalControls() {
     const resetBtn = document.getElementById("eval-reset-loc");
     if (resetBtn) {
         resetBtn.addEventListener("click", () => {
-            evalLockedFips = null;
-            drawHoverTimeSeries(null);
-            updateInsights();
-            drawEvalMap(); // redraw to clear highlight
+            setEvalLocation("all");
         });
     }
 }
@@ -399,15 +493,9 @@ function drawEvalMap() {
         })
         .on("click", (event, d) => {
             const fips = d.id;
-            if (evalLockedFips === fips) {
-                // Clicking same state unlocks
-                evalLockedFips = null;
-            } else {
-                evalLockedFips = fips;
-            }
-            drawHoverTimeSeries(evalLockedFips);
-            updateInsights();
-            updateLockedStateHighlight(g, states, stateValues, colorScale);
+            // Clicking the locked state unlocks (back to national); otherwise
+            // focus that state across the map, time series, and Model Comparison.
+            setEvalLocation(evalLockedFips === fips ? "all" : fips);
         });
 
     updateLockedStateHighlight(g, states, stateValues, colorScale);
@@ -551,10 +639,13 @@ function drawHoverCoverageCalibration(fips) {
         .attr("font-weight", "600").attr("fill", "#555")
         .text(`Coverage Calibration: ${name}`);
 
-    // Get coverage rows for this model + location
+    // Get coverage rows for this model + location, scoped to the current
+    // aggregation window (getAggDates is already season-aware).
+    const covAggDates = new Set(getAggDates());
     const locCovRows = evalCovRows.filter(r =>
         r[0] === evalSelectedModel && r[1] === loc &&
-        (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3]))
+        (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3])) &&
+        covAggDates.has(r[2])
     );
 
     if (locCovRows.length === 0) {
@@ -654,10 +745,11 @@ function drawHoverWisTimeSeries(fips) {
     const tooltip = d3.select("#eval-tooltip");
     const name = evalFipsToName[loc] || (loc === "US" ? "United States" : loc);
 
-    // Get rows for this model + location
+    // Get rows for this model + location, scoped to the selected season.
     const locWisRows = evalWisRows.filter(r =>
         r[0] === evalSelectedModel && r[1] === loc &&
-        (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3]))
+        (evalSelectedHorizons === null || evalSelectedHorizons.has(r[3])) &&
+        inSelectedSeason(r[2])
     );
 
     // Group by reference date
@@ -746,17 +838,21 @@ function drawHoverWisTimeSeries(fips) {
             .attr("font-size", "8px").attr("fill", "#aaa").text("Baseline");
     }
 
-    // Highlight aggregation window
-    const aggDates = new Set(getAggDates());
-    const aggData = data.filter(d => aggDates.has(d.dateStr));
-    if (aggData.length >= 2) {
-        g.append("rect")
-            .attr("x", x(aggData[0].date))
-            .attr("y", 0)
-            .attr("width", x(aggData[aggData.length - 1].date) - x(aggData[0].date))
-            .attr("height", innerH)
-            .attr("fill", "#4682B4")
-            .attr("opacity", 0.08);
+    // Highlight the aggregation window only for the rolling (last 2/4 week)
+    // options -- for "Full Season" the window is the whole plot, so shading adds
+    // nothing.
+    if (evalAgg !== "season") {
+        const aggDates = new Set(getAggDates());
+        const aggData = data.filter(d => aggDates.has(d.dateStr));
+        if (aggData.length >= 2) {
+            g.append("rect")
+                .attr("x", x(aggData[0].date))
+                .attr("y", 0)
+                .attr("width", x(aggData[aggData.length - 1].date) - x(aggData[0].date))
+                .attr("height", innerH)
+                .attr("fill", "#4682B4")
+                .attr("opacity", 0.08);
+        }
     }
 
     // WIS line
@@ -835,7 +931,10 @@ function drawBoxPlot() {
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const tooltip = d3.select("#eval-tooltip");
-    const filtered = filterRows(evalWisRows);
+    let filtered = filterRows(evalWisRows);
+    if (evalCompareLocation !== "all") {
+        filtered = filtered.filter(r => r[1] === evalCompareLocation);
+    }
     const allModels = evalWisMeta.models;
 
     // For each model, collect individual WIS ratios (one per date/location/horizon)
@@ -982,6 +1081,7 @@ function drawCoveragePlot() {
     const filteredCov = evalCovRows.filter(r => {
         if (!aggDates.has(r[2])) return false;
         if (evalSelectedHorizons !== null && !evalSelectedHorizons.has(r[3])) return false;
+        if (evalCompareLocation !== "all" && r[1] !== evalCompareLocation) return false;
         return true;
     });
 

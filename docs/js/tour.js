@@ -110,8 +110,8 @@ const TOUR_STEPS = [
         selector: ".traj-context-panel",
         infoKey: "traj",
         title: "Add Context",
-        text: "In some instances it's useful to see how the current season and the forecast compare to previous seasons or other contextual information.<br><br>" +
-            "<strong>Compare to Previous Seasons</strong> overlays historical hospitalization curves behind the current visualization. " +
+        text: "In some instances it's useful to see how the current season and the forecast compare to other seasons or other contextual information.<br><br>" +
+            "<strong>Compare to Other Seasons</strong> overlays every other season's hospitalization curve behind the current visualization. " +
             "<strong>Activity Levels</strong> visually shows where the thresholds fall for each location, so you can see where each week's forecast falls relative to historical intensity levels. " +
             "<strong>Trend Forecasts</strong> highlights and colors each trajectory by its predicted direction (e.g., increasing or decreasing) " +
             "depending on which forecast week is chosen (the 1-to-4-week-ahead forecast).",

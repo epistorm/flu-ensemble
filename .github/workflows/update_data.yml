@@ -9,7 +9,7 @@ on:
     inputs:
       branch:
         description: 'Branch to run on'
-        default: 'clara'
+        default: 'main'
 
 permissions:
   contents: write
@@ -19,6 +19,9 @@ permissions:
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    # Incremental ensemble/scoring keeps this to minutes; fail loudly instead of
+    # silently running for hours if something hangs.
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
@@ -39,6 +42,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Fetch forecast data
+        env:
+          # Raises the GitHub API limit from 60/hr (shared runner IP) to 5000/hr
+          # for the model-file listing calls in fetch_data.py.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Fetching forecast data..."
           python scripts/fetch_data.py

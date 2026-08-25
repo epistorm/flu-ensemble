@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/reichlab/flu-metrocast/main/target-data/latest-data.csv\")",
+      "Read(//Users/bay.c/Documents/GitHub/flu-ensemble/**)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/reichlab/flu-metrocast/main/auxiliary-data/locations.csv\")",
+      "Read(//private/tmp/**)",
+      "Read(//Users/bay.c/Documents/GitHub/flu-ensemble/{gsub\\(/^\"|\"$/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/bay.c/Documents/GitHub/forecast-evaluations-dashboard"
     ]
   }
 }
