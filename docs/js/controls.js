@@ -104,6 +104,9 @@ function buildDateButtons() {
         btn.append("span").attr("class", "date-range").text(dateRange);
         btn.append("span").attr("class", "date-label").text(label);
     }
+
+    // Keep the map-area forecast-date dropdown in sync with the current ref date.
+    if (typeof syncForecastDateSelector === "function") syncForecastDateSelector();
 }
 
 function formatShortDate(date) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Epistorm Ensemble — Influenza Hospitalization Forecast</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
 </head>
@@ -35,6 +35,9 @@
             <button class="tab" data-tab="trend">Influenza Trend</button>
             <button class="tab" data-tab="admissions">Weekly Hospital Admissions</button>
             <div class="tab-bar-actions">
+                <label class="season-picker">Season
+                    <select id="season-select" class="season-select" title="Choose a flu season"></select>
+                </label>
                 <button class="tab-action" onclick="startTour()">Guided Tour</button>
             </div>
         </div>
@@ -43,6 +46,10 @@
             <div class="card card-map">
                 <div class="map-with-controls">
                     <div class="map-left-controls">
+                        <div class="control-group">
+                            <div class="control-title">Forecast Date</div>
+                            <select id="overview-date-select" class="season-select overview-date-select"></select>
+                        </div>
                         <div class="control-group">
                             <div class="control-title">Uncertainty</div>
                             <div class="seg-group estimate-control" id="estimate-buttons">
@@ -83,6 +90,7 @@
                 <div class="gauges-overview" id="gauges-overview">
                     <h3 class="forecast-context-title" id="forecast-context-title"></h3>
                     <p class="overview-primary" id="overview-primary"></p>
+                    <p class="ensemble-disclaimer" id="overview-disclaimer" style="display:none;"></p>
                 </div>
                 <div class="gauges-stack">
                     <div class="gauge-wrapper" id="active-gauge-wrapper">
@@ -100,6 +108,7 @@
         <hr class="section-divider">
         <h2 class="section-title">Forecast Details</h2>
         <p class="section-subtitle">Quantile forecast by state. Select a state from the map above or the dropdown below. Click anywhere on the chart to jump to the forecast generated that week.</p>
+        <p class="ensemble-disclaimer" id="traj-disclaimer" style="display:none;"></p>
         <div class="card card-trajectories" id="trajectory-section">
             <div class="traj-header">
                 <div class="traj-controls">
@@ -124,7 +133,7 @@
                     <h3 class="context-panel-title">Add Context</h3>
                     <div class="context-section" id="ctx-seasons">
                         <button class="context-section-header" data-section="seasons">
-                            <span>Compare to Previous Seasons</span>
+                            <span>Compare to Other Seasons</span>
                             <span class="context-chevron">&#9662;</span>
                         </button>
                         <div class="context-section-body" id="ctx-seasons-body"></div>
@@ -155,13 +164,13 @@
     <div class="tooltip" id="tooltip"></div>
     <div class="traj-tip" id="traj-tooltip"></div>
 
-    <script src="js/colors.js"></script>
-    <script src="js/legend.js"></script>
-    <script src="js/gauges.js"></script>
-    <script src="js/map.js"></script>
-    <script src="js/controls.js"></script>
-    <script src="js/trajectories.js"></script>
-    <script src="js/tour.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/colors.js?v=9"></script>
+    <script src="js/legend.js?v=9"></script>
+    <script src="js/gauges.js?v=9"></script>
+    <script src="js/map.js?v=9"></script>
+    <script src="js/controls.js?v=9"></script>
+    <script src="js/trajectories.js?v=9"></script>
+    <script src="js/tour.js?v=9"></script>
+    <script src="js/main.js?v=9"></script>
 </body>
 </html>

@@ -1,313 +1,170 @@
 """
-Script to create ensemble forecasts (both quantile and categorical).
-Runs as part of GitHub Actions workflow.
+Create ensemble forecasts (quantile, LOP, categorical, activity) for both the
+Median and LOP methods. Runs as part of the GitHub Actions workflow.
+
+INCREMENTAL: an ensemble forecast is a fixed function of the member forecasts
+submitted that week, so it never changes once created. Only reference dates
+missing from the caches are computed; results are merged back in. Keeps the
+weekly run to seconds and lets a one-time backfill (cold cache) generate all
+historical seasons. (Scoring depends on the revisable observed truth and is
+recomputed in full by calculate_scores.py.)
 """
 
-import pandas as pd
-import numpy as np
 import sys
+import pandas as pd
 from pathlib import Path
 
-# Add scripts dir to path so we can import ensemble module
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ensemble import create_ensemble_method1, create_ensemble_method2, create_categorical_ensemble_quantile, create_activity_level_ensemble, get_versioned_data
+from ensemble import (create_ensemble_method1, create_ensemble_method2,
+                      create_categorical_ensemble_quantile,
+                      create_activity_level_ensemble, get_versioned_data)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 
+QUANTILE_PATH = DATA_DIR / 'quantile_ensemble.pq'
+LOP_PATH = DATA_DIR / 'quantile_ensemble_LOP.pq'
+CAT_PATH = DATA_DIR / 'categorical_ensemble.pq'
+CAT_LOP_PATH = DATA_DIR / 'categorical_ensemble_LOP.pq'
+ACT_PATH = DATA_DIR / 'activity_level_ensemble.pq'
+ACT_LOP_PATH = DATA_DIR / 'activity_level_ensemble_LOP.pq'
+COMBINED_PATH = DATA_DIR / 'ensemble_forecasts.pq'
+
+QUANTILE_KEYS = ['reference_date', 'target_end_date', 'location', 'horizon',
+                 'output_type', 'output_type_id', 'model']
+CAT_KEYS = ['reference_date', 'target_end_date', 'location', 'horizon',
+            'output_type', 'output_type_id', 'model']
+ACT_KEYS = ['reference_date', 'target_end_date', 'location', 'horizon',
+            'output_type', 'output_type_id']
+
+
+def _date_key(series):
+    return pd.to_datetime(series).dt.strftime('%Y-%m-%d')
+
+
+def existing_ref_dates(path):
+    if not Path(path).exists():
+        return set()
+    df = pd.read_parquet(path, columns=['reference_date'])
+    return set(_date_key(df['reference_date']))
+
+
+def merge_parquet(new_df, path, key_cols):
+    """Union new_df into the parquet at path (new rows win on key collision)."""
+    if new_df is None or len(new_df) == 0:
+        print(f"   (nothing new to merge into {path})")
+        return
+    new_df = new_df.copy()
+    if 'Model' in new_df.columns and 'model' not in new_df.columns:
+        new_df = new_df.rename(columns={'Model': 'model'})
+    for col in ('reference_date', 'target_end_date'):
+        if col in new_df.columns:
+            new_df[col] = pd.to_datetime(new_df[col])
+    if Path(path).exists():
+        existing = pd.read_parquet(path)
+        if 'Model' in existing.columns and 'model' not in existing.columns:
+            existing = existing.rename(columns={'Model': 'model'})
+        for col in ('reference_date', 'target_end_date'):
+            if col in existing.columns:
+                existing[col] = pd.to_datetime(existing[col])
+        combined = pd.concat([existing, new_df], ignore_index=True)
+    else:
+        combined = new_df
+    keys = [c for c in key_cols if c in combined.columns]
+    combined = combined.drop_duplicates(subset=keys, keep='last')
+    combined.to_parquet(path, index=False)
+    print(f"   {path.name}: +{len(new_df)} new rows -> {len(combined)} total")
+
+
 def main():
+    print("=" * 60)
+    print("Creating Ensemble Forecasts (incremental)")
+    print("=" * 60)
+
+    forecast_path = DATA_DIR / 'all_forecasts.parquet'
+    if not forecast_path.exists():
+        print(f"ERROR: Forecast file not found at {forecast_path}")
+        sys.exit(1)
+
+    df = pd.read_parquet(forecast_path)
+    df = df[df.model != 'FluSight-ensemble'].copy()
+    df['reference_date'] = pd.to_datetime(df['reference_date'])
+    df['target_end_date'] = pd.to_datetime(df['target_end_date'])
+    print(f"   Loaded {len(df):,} rows, {df['reference_date'].nunique()} ref dates, "
+          f"{df['model'].nunique()} models")
+
+    # Ensemble forecasts are a fixed function of the (already-submitted) member
+    # forecasts, so an existing reference date never changes -- only compute
+    # reference dates missing from the cache. (Scoring, which depends on the
+    # revisable observed truth, is recomputed in full by calculate_scores.py.)
+    target_dates = set(_date_key(df['reference_date']))
+    done_dates = existing_ref_dates(QUANTILE_PATH)
+    missing = sorted(target_dates - done_dates)
+    if not missing:
+        print("\nAll reference dates already present. Nothing to compute.")
+        return
+    print(f"\n   {len(missing)} new reference date(s) to compute:\n   " + ", ".join(missing))
+    df_new = df[_date_key(df['reference_date']).isin(missing)].copy()
+
+    # --- Quantile ensembles ---
+    print("\nPART 1a: Median quantile ensemble...")
+    q_med = create_ensemble_method1(df_new)
+    if len(q_med) == 0:
+        print("ERROR: no median quantile rows generated"); sys.exit(1)
+    q_med['model'] = 'Median Epistorm Ensemble'
+    merge_parquet(q_med, QUANTILE_PATH, QUANTILE_KEYS)
+
+    print("\nPART 1b: LOP quantile ensemble...")
+    q_lop = create_ensemble_method2(df_new)
+    if len(q_lop) == 0:
+        print("ERROR: no LOP quantile rows generated"); sys.exit(1)
+    q_lop['model'] = 'LOP Epistorm Ensemble'
+    merge_parquet(q_lop, LOP_PATH, QUANTILE_KEYS)
+
+    # --- Categorical ensembles (versioned obs fetched once) ---
+    print("\nPART 2: Categorical ensembles...")
+    obs_vers = get_versioned_data()
+    print(f"   Fetched {len(obs_vers):,} versioned observation rows")
+
+    cat_med = create_categorical_ensemble_quantile(
+        q_med[q_med.horizon >= 0], obs_vers=obs_vers,
+        model_name='Median Epistorm Ensemble')
+    merge_parquet(cat_med, CAT_PATH, CAT_KEYS)
+
+    cat_lop = create_categorical_ensemble_quantile(
+        q_lop[q_lop.horizon >= 0], obs_vers=obs_vers,
+        model_name='LOP Epistorm Ensemble')
+    merge_parquet(cat_lop, CAT_LOP_PATH, CAT_KEYS)
+
+    # --- Activity level ensembles (season-agnostic thresholds) ---
+    print("\nPART 3: Activity level ensembles...")
+    act_med = create_activity_level_ensemble(df=q_med, output_path=None)
+    merge_parquet(act_med, ACT_PATH, ACT_KEYS)
+
+    act_lop = create_activity_level_ensemble(df=q_lop, output_path=None)
+    merge_parquet(act_lop, ACT_LOP_PATH, ACT_KEYS)
+
+    # --- Combined convenience file (full caches) ---
+    print("\nPART 4: Rebuilding combined ensemble_forecasts.pq...")
+    parts = []
+    for p in (QUANTILE_PATH, LOP_PATH, CAT_PATH, CAT_LOP_PATH):
+        if Path(p).exists():
+            part = pd.read_parquet(p)
+            if 'Model' in part.columns and 'model' not in part.columns:
+                part = part.rename(columns={'Model': 'model'})
+            parts.append(part)
+    if parts:
+        pd.concat(parts, ignore_index=True).to_parquet(COMBINED_PATH, index=False)
+        print(f"   Saved {COMBINED_PATH}")
+
+    print("\nEnsemble forecasts updated successfully!")
+
+
+if __name__ == "__main__":
     try:
-        print("=" * 60)
-        print("Creating Ensemble Forecasts")
-        print("=" * 60)
-
-        # Load forecast data
-        print("\n1. Loading forecast data...")
-        forecast_path = DATA_DIR / 'all_forecasts.parquet'
-
-        if not forecast_path.exists():
-            print(f"ERROR: Forecast file not found at {forecast_path}")
-            sys.exit(1)
-
-        df = pd.read_parquet(forecast_path)
-        df = df[df.model!='FluSight-ensemble'].copy()  # Exclude existing ensemble forecasts
-        print(f"   Loaded {len(df):,} forecast rows")
-        print(f"   Models: {df['model'].nunique()}")
-        print(f"   Reference dates: {df['reference_date'].nunique()}")
-        print(f"   Locations: {df['location'].nunique()}")
-        print(f"   Horizons: {sorted(df['horizon'].unique())}")
-
-        # =====================================================================
-        # PART 1a: Create Quantile Ensemble (Median Method)
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 1a: Creating Quantile Ensemble (Median Method)")
-        print("=" * 60)
-
-        quantile_ensemble = create_ensemble_method1(df)
-
-        if len(quantile_ensemble) == 0:
-            print("ERROR: No quantile ensemble forecasts generated!")
-            sys.exit(1)
-
-        quantile_ensemble['model'] = 'Median Epistorm Ensemble'
-
-        print(f"   Generated {len(quantile_ensemble):,} quantile forecast rows")
-        print(f"   Reference dates: {quantile_ensemble['reference_date'].nunique()}")
-        print(f"   Locations: {quantile_ensemble['location'].nunique()}")
-        print(f"   Quantiles: {sorted(quantile_ensemble['output_type_id'].unique())}")
-
-        # Save quantile ensemble
-        print("\n   Saving quantile ensemble...")
-        quantile_output_path = DATA_DIR / 'quantile_ensemble.pq'
-        quantile_ensemble.to_parquet(quantile_output_path, index=False)
-        print(f"   Saved to {quantile_output_path}")
-
-        # =====================================================================
-        # PART 1b: Creating Quantile Ensemble (LOP Method)
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 1b: Creating Quantile Ensemble (LOP Method)")
-        print("=" * 60)
-
-        quantile_ensemble_LOP = create_ensemble_method2(df)
-
-        if len(quantile_ensemble_LOP) == 0:
-            print("ERROR: No LOP quantile ensemble forecasts generated!")
-            sys.exit(1)
-
-        quantile_ensemble_LOP['model'] = 'LOP Epistorm Ensemble'
-
-        print(f"   Generated {len(quantile_ensemble_LOP):,} quantile forecast rows")
-        print(f"   Reference dates: {quantile_ensemble_LOP['reference_date'].nunique()}")
-        print(f"   Locations: {quantile_ensemble_LOP['location'].nunique()}")
-        print(f"   Quantiles: {sorted(quantile_ensemble_LOP['output_type_id'].unique())}")
-
-        # Save LOP quantile ensemble
-        print("\n   Saving LOP quantile ensemble...")
-        quantile_output_path = DATA_DIR / 'quantile_ensemble_LOP.pq'
-        quantile_ensemble_LOP.to_parquet(quantile_output_path, index=False)
-        print(f"   Saved to {quantile_output_path}")
-
-        # =====================================================================
-        # PART 2: Create Categorical Ensemble
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 2: Creating Categorical Ensemble (Trend Predictions)")
-        print("=" * 60)
-
-        # Pre-fetch versioned observation data once for both Median and LOP categorical ensembles
-        print("\n   Fetching versioned observation data (one-time API call)...")
-        obs_vers = get_versioned_data()
-        print(f"   Fetched {len(obs_vers):,} versioned observation rows")
-
-        # Use the quantile ensemble to create categorical forecasts
-        print("\n   Creating categorical ensemble from quantile ensemble...")
-        print("   This may take a few minutes...")
-
-        categorical_ensemble = create_categorical_ensemble_quantile(
-            quantile_ensemble[quantile_ensemble.horizon>=0],
-            obs_vers=obs_vers,
-            model_name='Median Epistorm Ensemble')
-
-        if len(categorical_ensemble) == 0:
-            print("WARNING: No categorical forecasts generated!")
-            sys.exit(1)
-
-        print(f"   Generated {len(categorical_ensemble):,} categorical forecast rows")
-
-        # Validate categorical output
-        print("\n   Validating categorical output...")
-        prob_check = categorical_ensemble.groupby(
-            ['reference_date', 'horizon', 'location']
-        )['value'].sum()
-
-        invalid_probs = prob_check[(prob_check < 0.99) | (prob_check > 1.01)]
-        if len(invalid_probs) > 0:
-            print(f"   WARNING: {len(invalid_probs)} groups have probabilities not summing to 1")
-            print(invalid_probs.head())
-        else:
-            print("   All probability distributions sum to 1")
-
-        # Save categorical results
-        print("\n   Saving categorical ensemble...")
-        categorical_output_path = DATA_DIR / 'categorical_ensemble.pq'
-        categorical_ensemble.to_parquet(categorical_output_path, index=False)
-        print(f"   Saved to {categorical_output_path}")
-
-        # =====================================================================
-        # PART 2b: Create Categorical Ensemble (LOP Method)
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 2b: Creating Categorical Ensemble from LOP Quantile Ensemble")
-        print("=" * 60)
-
-        print("\n   Creating categorical ensemble from LOP quantile ensemble...")
-        print("   This may take a few minutes...")
-
-        categorical_ensemble_LOP = create_categorical_ensemble_quantile(
-            quantile_ensemble_LOP[quantile_ensemble_LOP.horizon>=0],
-            obs_vers=obs_vers,
-            model_name='LOP Epistorm Ensemble')
-
-        if len(categorical_ensemble_LOP) == 0:
-            print("WARNING: No LOP categorical forecasts generated!")
-            sys.exit(1)
-
-        print(f"   Generated {len(categorical_ensemble_LOP):,} LOP categorical forecast rows")
-
-        # Validate categorical output
-        print("\n   Validating LOP categorical output...")
-        prob_check_LOP = categorical_ensemble_LOP.groupby(
-            ['reference_date', 'horizon', 'location']
-        )['value'].sum()
-
-        invalid_probs_LOP = prob_check_LOP[(prob_check_LOP < 0.99) | (prob_check_LOP > 1.01)]
-        if len(invalid_probs_LOP) > 0:
-            print(f"   WARNING: {len(invalid_probs_LOP)} groups have probabilities not summing to 1")
-            print(invalid_probs_LOP.head())
-        else:
-            print("   All probability distributions sum to 1")
-
-        # Save LOP categorical results
-        print("\n   Saving LOP categorical ensemble...")
-        categorical_LOP_output_path = DATA_DIR / 'categorical_ensemble_LOP.pq'
-        categorical_ensemble_LOP.to_parquet(categorical_LOP_output_path, index=False)
-        print(f"   Saved to {categorical_LOP_output_path}")
-
-        # =====================================================================
-        # PART 3: Create Activity Level Ensemble
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 3: Creating Activity Level Ensemble")
-        print("=" * 60)
-
-        # Load thresholds
-        print("\n   Loading activity level thresholds...")
-        thresholds_path = DATA_DIR / 'threshold_levels.csv'
-
-        if not thresholds_path.exists():
-            print(f"ERROR: Thresholds file not found at {thresholds_path}")
-            sys.exit(1)
-
-        thresholds = pd.read_csv(thresholds_path)
-        thresholds['location'] = thresholds['location'].astype(str).str.zfill(2)
-        print(f"   Loaded thresholds for {len(thresholds)} locations")
-
-        # Create activity level ensemble from quantile ensemble
-        print("\n   Creating activity level ensemble from quantile ensemble...")
-
-        activity_level_ensemble = create_activity_level_ensemble(
-            quantile_ensemble_path=str(DATA_DIR / 'quantile_ensemble.pq'),
-            thresholds_path=str(DATA_DIR / 'threshold_levels.csv'),
-            output_path=str(DATA_DIR / 'activity_level_ensemble.pq')
-        )
-
-        if len(activity_level_ensemble) == 0:
-            print("WARNING: No activity level forecasts generated!")
-            sys.exit(1)
-
-        print(f"   Generated {len(activity_level_ensemble):,} activity level forecast rows")
-
-        # Save activity level results
-        print("\n   Saving activity level ensemble...")
-        activity_output_path = DATA_DIR / 'activity_level_ensemble.pq'
-        activity_level_ensemble.to_parquet(activity_output_path, index=False)
-        print(f"   Saved to {activity_output_path}")
-
-        # =====================================================================
-        # PART 3b: Create Activity Level Ensemble (LOP Method)
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 3b: Creating Activity Level Ensemble from LOP Quantile Ensemble")
-        print("=" * 60)
-
-        print("\n   Creating activity level ensemble from LOP quantile ensemble...")
-
-        activity_level_ensemble_LOP = create_activity_level_ensemble(
-            quantile_ensemble_path=str(DATA_DIR / 'quantile_ensemble_LOP.pq'),
-            thresholds_path=str(DATA_DIR / 'threshold_levels.csv'),
-            output_path=str(DATA_DIR / 'activity_level_ensemble_LOP.pq')
-        )
-
-        if len(activity_level_ensemble_LOP) == 0:
-            print("WARNING: No LOP activity level forecasts generated!")
-            sys.exit(1)
-
-        print(f"   Generated {len(activity_level_ensemble_LOP):,} LOP activity level forecast rows")
-
-        # Save LOP activity level results
-        print("\n   Saving LOP activity level ensemble...")
-        activity_LOP_output_path = DATA_DIR / 'activity_level_ensemble_LOP.pq'
-        activity_level_ensemble_LOP.to_parquet(activity_LOP_output_path, index=False)
-        print(f"   Saved to {activity_LOP_output_path}")
-
-        # =====================================================================
-        # PART 4: Combine Everything
-        # =====================================================================
-        print("\n" + "=" * 60)
-        print("PART 4: Combining All Ensemble Forecasts")
-        print("=" * 60)
-
-        # Combine all ensembles
-        # Standardize column names
-        for df_name, df_obj in [('categorical_ensemble', categorical_ensemble),
-                                 ('categorical_ensemble_LOP', categorical_ensemble_LOP)]:
-            if 'Model' in df_obj.columns and 'model' not in df_obj.columns:
-                df_obj.rename(columns={'Model': 'model'}, inplace=True)
-
-        combined_ensemble = pd.concat([
-            quantile_ensemble, quantile_ensemble_LOP,
-            categorical_ensemble, categorical_ensemble_LOP
-        ], ignore_index=True)
-        combined_all = pd.concat([
-            combined_ensemble, activity_level_ensemble, activity_level_ensemble_LOP
-        ], ignore_index=True)
-        print(f"   Combined ensemble (with activity levels) has {len(combined_all):,} total rows")
-
-        print(f"   Combined ensemble has {len(combined_ensemble):,} total rows")
-        print(f"      - Median Quantile forecasts: {len(quantile_ensemble):,}")
-        print(f"      - LOP Quantile forecasts: {len(quantile_ensemble_LOP):,}")
-        print(f"      - Median Categorical forecasts: {len(categorical_ensemble):,}")
-        print(f"      - LOP Categorical forecasts: {len(categorical_ensemble_LOP):,}")
-        print(f"      - Median Activity level forecasts: {len(activity_level_ensemble):,}")
-        print(f"      - LOP Activity level forecasts: {len(activity_level_ensemble_LOP):,}")
-
-        # Save combined
-        combined_path = DATA_DIR / 'ensemble_forecasts.pq'
-        combined_ensemble.to_parquet(combined_path, index=False)
-        print(f"   Saved combined ensemble to {combined_path}")
-
-        # Print final summary
-        print("\n" + "=" * 60)
-        print("SUMMARY")
-        print("=" * 60)
-
-        print("\nQuantile Ensemble by Reference Date:")
-        quantile_summary = quantile_ensemble.groupby('reference_date').agg({
-            'location': 'nunique',
-            'horizon': 'nunique',
-            'output_type_id': 'nunique'
-        })
-        quantile_summary.columns = ['Locations', 'Horizons', 'Quantiles']
-        print(quantile_summary)
-
-        print("\nCategorical Ensemble by Reference Date:")
-        categorical_summary = categorical_ensemble.groupby('reference_date').agg({
-            'location': 'nunique',
-            'horizon': 'nunique',
-            'output_type_id': 'nunique'
-        })
-        categorical_summary.columns = ['Locations', 'Horizons', 'Categories']
-        print(categorical_summary)
-
-        print("\nAll ensemble forecasts created successfully!")
-
+        main()
     except Exception as e:
-        print(f"\nERROR: {str(e)}")
+        print(f"\nERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()

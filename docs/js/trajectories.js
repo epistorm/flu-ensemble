@@ -10,17 +10,44 @@ let trajSvg, trajX, trajY, trajChartG;
 let trajData = null;
 let historicalSeasons = null;
 
-// Context panel state
-let contextSeasons = { "2022-23": true, "2023-24": true, "2024-25": true };
+// Context panel state — populated dynamically with every season except the
+// currently-selected one (see refreshContextSeasons).
+let contextSeasons = {};
 let showSeasons = false;
 let showActivityBands = false;
 
-// Season styling
+// Season styling (fallback palette covers any season without an explicit entry)
 const SEASON_STYLES = {
+    "2021-22": { color: "#C9772E", dash: "6,3", width: 2 },
     "2022-23": { color: "#E07B54", dash: "8,4", width: 2 },
     "2023-24": { color: "#7B68AE", dash: "4,4", width: 2 },
-    "2024-25": { color: "#4A9A6F", dash: "2,3", width: 2 }
+    "2024-25": { color: "#4A9A6F", dash: "2,3", width: 2 },
+    "2025-26": { color: "#2C7FB8", dash: "1,3", width: 2 }
 };
+const SEASON_FALLBACK_COLORS = ["#8A8D91", "#B5651D", "#5B7C99", "#9C6BA3", "#6B8E23"];
+function seasonStyle(season) {
+    if (SEASON_STYLES[season]) return SEASON_STYLES[season];
+    const idx = Math.abs([...season].reduce((a, c) => a + c.charCodeAt(0), 0)) % SEASON_FALLBACK_COLORS.length;
+    return { color: SEASON_FALLBACK_COLORS[idx], dash: "3,3", width: 2 };
+}
+
+// Seasons available for overlay = every season present in historical_seasons.
+function seasonListFromData() {
+    if (!historicalSeasons) return [];
+    const src = historicalSeasons["US"] || Object.values(historicalSeasons)[0] || {};
+    return Object.keys(src).sort();
+}
+
+// Rebuild contextSeasons to be every season EXCEPT the selected one, preserving
+// prior on/off choices. Called on load and whenever the season changes.
+function refreshContextSeasons() {
+    const cur = AppState.currentSeason;
+    const others = seasonListFromData().filter(s => s !== cur);
+    const next = {};
+    others.forEach(s => { next[s] = (s in contextSeasons) ? contextSeasons[s] : true; });
+    contextSeasons = next;
+    buildSeasonsSection();
+}
 
 // Fan chart band styling
 const FAN_STYLES = {
@@ -85,6 +112,7 @@ function initTrajectoryChart() {
     // Load historical seasons then draw
     d3.json("data/historical_seasons.json").then(hs => {
         historicalSeasons = hs;
+        refreshContextSeasons();
         loadAndDrawTrajectories("US");
     });
 }
@@ -122,8 +150,8 @@ function buildSeasonsSection() {
     const body = d3.select("#ctx-seasons-body");
     body.selectAll("*").remove();
 
-    Object.keys(contextSeasons).forEach(season => {
-        const style = SEASON_STYLES[season] || {};
+    Object.keys(contextSeasons).sort().forEach(season => {
+        const style = seasonStyle(season);
         const btn = body.append("button")
             .attr("class", "ctx-season-btn" + (contextSeasons[season] ? " active" : ""))
             .attr("data-season", season)
@@ -197,13 +225,34 @@ function drawTrajectories() {
         .filter(d => d.value != null)
         .map(d => ({ date: new Date(d.date + "T00:00:00"), value: d.value, rate: d.rate }));
 
-    const showFrom = new Date("2025-11-01T00:00:00");
-    const recentObserved = observedParsed.filter(d => d.date >= showFrom);
+    // Season-aware window: show from Sep 1 of the selected season's start year
+    // (seasons run Sep 1 -> Aug 31).
+    const seasonLabel = AppState.currentSeason || seasonOfDate(AppState.currentRefDate);
+    const seasonYr = seasonStartYear(seasonLabel);
+    const showFrom = new Date(seasonYr, 8, 1);      // Sep 1
+    const seasonEnd = new Date(seasonYr + 1, 7, 31); // Aug 31 next year
+    const recentObserved = observedParsed.filter(d => d.date >= showFrom && d.date <= seasonEnd);
 
     const refDate = AppState.currentRefDate;
     const refDateObj = new Date(refDate + "T00:00:00");
     const refQuantileData = trajData?.data?.[refDate];
-    const refDates = dashboardData.reference_dates;
+    // Restrict click-to-jump to the selected season's reference dates.
+    const seasonRefDates = refDatesForSeason(seasonLabel);
+    const refDates = seasonRefDates.length ? seasonRefDates : dashboardData.reference_dates;
+
+    // Thin-ensemble disclaimer for this location/date.
+    const disc = document.getElementById("traj-disclaimer");
+    if (disc) {
+        const n = getModelCount(refDate, fips);
+        const rawName = (locationsData.find(l => l.fips === fips) || {}).name || fips;
+        const locName = rawName === "US" ? "United States" : rawName;
+        if (n != null && n <= THIN_ENSEMBLE_MAX) {
+            disc.textContent = `⚠ For ${locName} on ${refDate}, this forecast combines only ${n} model${n === 1 ? "" : "s"} — interpret with added caution.`;
+            disc.style.display = "";
+        } else {
+            disc.style.display = "none";
+        }
+    }
 
     // Compute domains
     let allDates = recentObserved.map(d => d.date);
@@ -221,7 +270,7 @@ function drawTrajectories() {
     // Compute and store aligned season data for tooltip
     _alignedSeasonData = {};
     if (showSeasons && historicalSeasons?.[fips]) {
-        const currentSeasonStart = new Date("2025-10-01T00:00:00");
+        const currentSeasonStart = new Date(seasonYr, 8, 1); // Sep 1 of selected season
         Object.keys(historicalSeasons[fips]).forEach(sName => {
             if (!contextSeasons[sName]) return;
             const season = historicalSeasons[fips][sName];
@@ -298,7 +347,7 @@ function drawTrajectories() {
     if (showSeasons) {
         Object.entries(_alignedSeasonData).forEach(([sName, lineData]) => {
             if (lineData.length < 2) return;
-            const style = SEASON_STYLES[sName] || { color: "#ccc", dash: "4,4", width: 2 };
+            const style = seasonStyle(sName);
 
             const line = d3.line()
                 .x(d => trajX(d.date))
@@ -313,17 +362,8 @@ function drawTrajectories() {
                 .attr("stroke-width", style.width)
                 .attr("stroke-dasharray", style.dash)
                 .attr("opacity", 0.7);
-
-            const last = lineData[lineData.length - 1];
-            seasonsG.append("text")
-                .attr("x", trajX(last.date) + 4)
-                .attr("y", trajY(last.value))
-                .attr("font-family", TRAJ_FONT)
-                .attr("font-size", TRAJ_FONT_SIZE)
-                .attr("fill", style.color)
-                .attr("dominant-baseline", "middle")
-                .attr("font-weight", "600")
-                .text(sName);
+            // Season identity is shown via the color-coded buttons in the
+            // context panel; in-chart end labels overlapped and were unreadable.
         });
     }
 
@@ -675,7 +715,7 @@ function showHoverTooltip(event, nearestDate, recentObserved, refDateObj, refQua
 
     // Previous season values
     Object.entries(_alignedSeasonData).forEach(([sName, data]) => {
-        const style = SEASON_STYLES[sName] || {};
+        const style = seasonStyle(sName);
         const point = data.find(d => Math.abs(d.date - nearestDate) < 24 * 60 * 60 * 1000);
         if (point) {
             html += `<div class="traj-tip-row"><span class="traj-tip-swatch" style="background:${style.color}"></span>${sName}: <strong>${valFmt(point.value)}</strong></div>`;

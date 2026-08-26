@@ -15,11 +15,22 @@ import pandas as pd
 import numpy as np
 import json
 import os
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from season_utils import season_of
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 OUT_DIR = BASE_DIR / "docs" / "data"
+
+
+def _season_map(ref_dates):
+    """Return ({date: season}, [seasons sorted]) for a list of ref-date strings."""
+    dmap = {d: season_of(d) for d in ref_dates}
+    seasons = sorted({s for s in dmap.values() if s})
+    return dmap, seasons
 
 # Quantile levels to export for fan chart
 QUANTILE_LEVELS = [0.025, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.975]
@@ -31,6 +42,32 @@ ACTIVITY_ORDER = ["low", "moderate", "high", "very_high"]
 
 # Max horizons for dashboard map (all horizons used for trajectory chart)
 MAX_DASHBOARD_HORIZONS = 4
+
+
+def compute_model_counts():
+    """Count contributing member models per (reference_date, location).
+
+    Reads the raw member forecasts (all_forecasts.parquet), excludes the CDC
+    FluSight-ensemble, and counts distinct models per date/location. Returns
+    {reference_date: {fips: n}}.
+    """
+    path = DATA_DIR / "all_forecasts.parquet"
+    if not path.exists():
+        print("  WARNING: all_forecasts.parquet not found; model counts unavailable")
+        return {}
+    af = pd.read_parquet(path, columns=["reference_date", "location", "model",
+                                        "output_type", "target"])
+    af = af[(af["output_type"] == "quantile")
+            & (af["target"] == "wk inc flu hosp")
+            & (af["model"] != "FluSight-ensemble")]
+    af["location"] = af["location"].astype(str)
+    af["reference_date"] = pd.to_datetime(af["reference_date"]).dt.strftime("%Y-%m-%d")
+    counts = af.groupby(["reference_date", "location"])["model"].nunique()
+    result = {}
+    for (ref_date, loc), n in counts.items():
+        result.setdefault(ref_date, {})[loc] = int(n)
+    print(f"  Computed member counts for {len(counts)} (date, location) pairs")
+    return result
 
 
 def export_target_data(target_data):
@@ -67,10 +104,19 @@ def export_target_data(target_data):
 def export_historical_seasons(target_data):
     """Export historical season curves aligned by week offset from Oct 1."""
     print("\nExporting historical_seasons.json...")
+    # Seasons run Sep 1 -> Aug 31; week index 0 is the first week on/after Sep 1,
+    # which the frontend aligns to Sep 1 of the selected season. Built dynamically
+    # from the observed date range so new seasons (e.g. 2026-27) appear on their
+    # own -- seasons with no data yet are simply skipped below.
+    dts = pd.to_datetime(target_data["date"], errors="coerce").dropna()
+    if len(dts):
+        first_year = dts.min().year - 1
+        last_year = dts.max().year
+    else:
+        first_year, last_year = 2021, 2025
     seasons = {
-        "2022-23": ("2022-10-01", "2023-09-30"),
-        "2023-24": ("2023-10-01", "2024-09-30"),
-        "2024-25": ("2024-10-01", "2025-09-30"),
+        f"{y}-{str(y + 1)[-2:]}": (f"{y}-09-01", f"{y + 1}-08-31")
+        for y in range(first_year, last_year + 1)
     }
 
     result = {}
@@ -163,7 +209,7 @@ def export_quantile_trajectories(quantile_ensemble, locations, subfolder="trajec
 
 
 def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations,
-                          output_name="dashboard_data.json"):
+                          output_name="dashboard_data.json", model_counts=None):
     """Export dashboard_data.json with trend/activity probabilities."""
     print(f"\nExporting {output_name}...")
 
@@ -186,11 +232,17 @@ def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ense
     ref_dates = sorted(cat_df['reference_date'].dt.strftime('%Y-%m-%d').unique())
     most_recent = ref_dates[-1] if ref_dates else None
 
+    date_seasons, seasons = _season_map(ref_dates)
     output = {
         "most_recent_reference_date": most_recent,
         "reference_dates": ref_dates,
+        "seasons": seasons,
+        "reference_date_seasons": date_seasons,
         "trend_categories": TREND_ORDER,
         "activity_categories": ACTIVITY_ORDER,
+        # {reference_date: {fips: n_contributing_member_models}} -- drives the
+        # "thin ensemble" disclaimer on the frontend.
+        "model_counts": model_counts or {},
         "data": {},
     }
 
@@ -371,6 +423,11 @@ def main():
     print(f"  Categorical ensemble: {len(categorical_ensemble):,} rows")
     print(f"  Activity level ensemble: {len(activity_ensemble):,} rows")
 
+    # --- Member-model counts per (reference_date, location) ---
+    # Counts the individual models that contributed to the ensemble (excludes
+    # the CDC FluSight-ensemble). Drives the thin-ensemble disclaimer.
+    model_counts = compute_model_counts()
+
     # --- Write locations.json ---
     os.makedirs(OUT_DIR, exist_ok=True)
     locations_out = []
@@ -391,7 +448,8 @@ def main():
 
     # --- Dashboard data (Median ensemble) ---
     if not categorical_ensemble.empty and not activity_ensemble.empty:
-        export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations)
+        export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations,
+                              model_counts=model_counts)
     else:
         print("\nWARNING: Missing categorical or activity ensemble data, skipping dashboard_data.json")
 
@@ -421,7 +479,8 @@ def main():
 
         if not lop_cat.empty and not lop_act.empty:
             export_dashboard_data(lop_cat, lop_act, lop_quant, locations,
-                                  output_name="dashboard_data_lop.json")
+                                  output_name="dashboard_data_lop.json",
+                                  model_counts=model_counts)
         else:
             print("\nWARNING: Missing categorical or activity data, skipping dashboard_data_lop.json")
     else:
@@ -471,6 +530,13 @@ def export_evaluation_data():
     wis_df = pd.read_parquet(wis_path)
     cov_df = pd.read_parquet(cov_path)
 
+    # Drop rows with missing scores (e.g. past-season weeks lacking a settled
+    # observed value) -- JSON cannot represent NaN and the frontend cannot
+    # aggregate it.
+    wis_df = wis_df.dropna(subset=['wis', 'wis_baseline'])
+    _cov_cols = [c for c in cov_df.columns if c.endswith('_cov')]
+    cov_df = cov_df.dropna(subset=_cov_cols, how='any')
+
     # --- eval_wis.json ---
     # Export raw rows: model, location, date, horizon, wis, wis_baseline
     # JS will aggregate dynamically
@@ -488,9 +554,12 @@ def export_evaluation_data():
             round(float(r['wis_baseline']), 2),
         ])
 
+    date_seasons, seasons = _season_map(ref_dates)
     eval_wis = {
         "models": models,
         "reference_dates": ref_dates,
+        "seasons": seasons,
+        "reference_date_seasons": date_seasons,
         "columns": ["model", "location", "date", "horizon", "wis", "wis_baseline"],
         "rows": rows,
     }

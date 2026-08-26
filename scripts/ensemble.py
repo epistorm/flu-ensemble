@@ -515,19 +515,25 @@ def create_categorical_ensemble_quantile(df, obs_vers=None, model_name='Median E
 
 def create_activity_level_ensemble(quantile_ensemble_path=None,
                                     thresholds_path=None,
-                                    output_path=None):
+                                    output_path=None,
+                                    df=None):
     """
     Convert quantile ensemble forecasts into activity level probabilities
     (Low, Moderate, High, Very High) using state-specific thresholds.
+
+    Pass `df` (a quantile-ensemble DataFrame) to operate in-memory instead of
+    reading `quantile_ensemble_path` -- used for incremental generation. When
+    `output_path` is None the result is returned without being written to disk.
     """
-    if quantile_ensemble_path is None:
-        quantile_ensemble_path = BASE_DIR / 'data' / 'quantile_ensemble.pq'
     if thresholds_path is None:
         thresholds_path = BASE_DIR / 'data' / 'threshold_levels.csv'
-    if output_path is None:
-        output_path = BASE_DIR / 'data' / 'activity_level_ensemble.pq'
 
-    df = pd.read_parquet(quantile_ensemble_path)
+    if df is None:
+        if quantile_ensemble_path is None:
+            quantile_ensemble_path = BASE_DIR / 'data' / 'quantile_ensemble.pq'
+        df = pd.read_parquet(quantile_ensemble_path)
+    else:
+        df = df.copy()
     df['reference_date'] = pd.to_datetime(df['reference_date'])
     df['target_end_date'] = pd.to_datetime(df['target_end_date'])
 
@@ -625,10 +631,11 @@ def create_activity_level_ensemble(quantile_ensemble_path=None,
         'target', 'output_type', 'output_type_id', 'value'
     ]]
 
-    results_df.to_parquet(output_path, index=False)
-    print(f"Saved activity level ensemble to {output_path}")
-    print(f"Shape: {results_df.shape}")
-    print(f"Locations: {results_df.location.nunique()}")
-    print(f"Reference dates: {results_df.reference_date.nunique()}")
+    if output_path is not None:
+        results_df.to_parquet(output_path, index=False)
+        print(f"Saved activity level ensemble to {output_path}")
+        print(f"Shape: {results_df.shape}")
+        print(f"Locations: {results_df.location.nunique()}")
+        print(f"Reference dates: {results_df.reference_date.nunique()}")
 
     return results_df
