@@ -81,7 +81,7 @@ jobs:
 
           BRANCH=$(git rev-parse --abbrev-ref HEAD)
           git commit -m "Update forecast data and scores - $(date +'%Y-%m-%d')"
-          git pull --rebase origin "$BRANCH"
+          git pull --rebase --autostash origin "$BRANCH"
           git push origin "$BRANCH"
 
   deploy-dashboard:
