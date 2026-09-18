@@ -2,73 +2,234 @@ import pandas as pd
 import numpy as np
 from typing import List, Tuple
 from scipy.interpolate import interp1d
-from datetime import timedelta
 from epiweeks import Week
 import epiweeks
-import covidcast
-from delphi_epidata import Epidata
-from datetime import datetime
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 api_key = os.environ.get('COVIDCAST_API_KEY', '4bee67d2520898')
+# epidatpy reads DELPHI_EPIDATA_KEY; mirror the same key so all clients work.
+os.environ.setdefault('DELPHI_EPIDATA_KEY', api_key)
 
-# Set API key for both covidcast and Epidata clients
+# Legacy V4 Delphi clients. Kept only as a fallback for get_versioned_data and
+# guarded so the module still imports if these deprecated packages are absent
+# (e.g. after the epidatpy / pandas>=2 migration removes `covidcast`).
 try:
-    covidcast.use_api_key(api_key)
-except AttributeError:
-    os.environ['COVIDCAST_API_KEY'] = api_key
+    import covidcast
+    try:
+        covidcast.use_api_key(api_key)
+    except Exception:
+        os.environ['COVIDCAST_API_KEY'] = api_key
+except Exception:
+    covidcast = None
 
-# Set API key for delphi_epidata
-Epidata.auth = ('epidata', api_key)
+try:
+    from delphi_epidata import Epidata
+    Epidata.auth = ('epidata', api_key)
+except Exception:
+    Epidata = None
+
+
+# Columns returned by get_versioned_data(); used to build an empty frame when
+# the upstream API is unavailable so downstream code can fall back cleanly.
+VERSIONED_COLUMNS = ['geo_value', 'time_value', 'issue', 'value', 'issue_date',
+                     'target_end_date', 'abbreviation', 'location', 'location_name']
+
+
+def _empty_versioned():
+    return pd.DataFrame(columns=VERSIONED_COLUMNS)
+
+
+NHSN_SOURCE = 'nhsn'
+# The signal was renamed in the Delphi v5 migration: the V4 preliminary signal
+# `confirmed_admissions_flu_ew_prelim` is `confirmed_admissions_flu_ew` in V5
+# (the `_prelim` suffix was dropped). NOTE: V5 also exposes a
+# `hosprep_confirmed_admissions_flu_ew` (hospital-reported) variant whose values
+# differ; confirm which one best matches the V4 `_prelim` series you relied on.
+NHSN_SIGNAL_V5 = 'confirmed_admissions_flu_ew'
+NHSN_SIGNAL_V4 = 'confirmed_admissions_flu_ew_prelim'
+
+
+def _versioned_window():
+    """(start_date, end_date) covering the current season's issues.
+
+    Rolling ~400-day window so it always spans the active season without a
+    hardcoded season start (works for 2025-26, 2026-27, ...)."""
+    end = datetime.now().date()
+    return end - timedelta(days=400), end
+
+
+def _finalize_versioned(df):
+    """Merge state/nation abbreviations to FluSight locations and select the
+    standard VERSIONED_COLUMNS."""
+    if df is None or len(df) == 0:
+        return None
+    locations = pd.read_csv(BASE_DIR / 'data' / 'locations.csv')[
+        ['abbreviation', 'location', 'location_name']]
+    df = df.merge(locations, on='abbreviation', how='inner')
+    for c in VERSIONED_COLUMNS:
+        if c not in df.columns:
+            df[c] = pd.NA
+    return df[VERSIONED_COLUMNS]
+
+
+def _normalize_epiweek_frame(df):
+    """Normalize a V4-style frame (geo_value, time_value, issue, value with
+    epiweek ints/strings) into the standard versioned shape."""
+    d = df[['geo_value', 'time_value', 'issue', 'value']].copy()
+    d['time_value'] = d['time_value'].apply(lambda x: int(str(x)))
+    d['issue'] = d['issue'].apply(lambda x: int(str(x)))
+    d['issue_date'] = d['issue'].apply(lambda x: Week(x // 100, x % 100).enddate())
+    d['target_end_date'] = d['time_value'].apply(lambda x: Week(x // 100, x % 100).enddate())
+    d['abbreviation'] = d['geo_value'].apply(lambda x: str(x).upper())
+    return d
+
+
+def _normalize_v5_archive(df):
+    """Normalize a V5 archive frame (reference_time, report_time, geo_value,
+    value) into the standard versioned shape.
+
+    IMPORTANT: V5 report_time is the actual publication date (a Wed/Fri), not the
+    epiweek-ending Saturday that V4 `issue` resolved to. The categorical lookup
+    keys on issue_date == reference_date (a Saturday), so we normalize both dates
+    to their epiweek-ending Saturday; otherwise the versioned lookup would never
+    hit and would silently fall back to finalized data.
+
+    Forecasts are made on the Wednesday of the reference week, so within each
+    forecast week we keep the EARLIEST report (the Wednesday preliminary release)
+    -- i.e. the data actually available at forecast time -- not a later same-week
+    (Friday) revision. This matches V4's one-value-per-issue-epiweek behavior.
+    """
+    d = df.copy()
+    raw_report = pd.to_datetime(d['report_time'])
+    d['target_end_date'] = pd.to_datetime(d['reference_time']).apply(
+        lambda x: Week.fromdate(x).enddate())
+    d['issue_date'] = raw_report.apply(lambda x: Week.fromdate(x).enddate())
+    d['abbreviation'] = d['geo_value'].apply(lambda x: str(x).upper())
+    # Keep the earliest (Wednesday) report within each (geo, reference week,
+    # forecast week) -- the value available when the forecast was generated.
+    d['_raw_report'] = raw_report
+    d = (d.sort_values('_raw_report')
+           .drop_duplicates(subset=['geo_value', 'target_end_date', 'issue_date'],
+                            keep='first'))
+    d['time_value'] = pd.NA
+    d['issue'] = pd.NA
+    return d[['geo_value', 'time_value', 'issue', 'value',
+              'issue_date', 'target_end_date', 'abbreviation']]
+
+
+def _fetch_epidatpy(start, end):
+    """Fetch versioned NHSN data via epidatpy: V5 archive first, then the V4
+    covidcast endpoint. Returns a normalized frame, or None if unavailable."""
+    from epidatpy import EpiDataContext, EpiRange  # lazy: optional dependency
+    ctx = EpiDataContext(use_cache=False)
+
+    # --- V5 archive (preferred; nhsn not migrated to V5 as of 2026-09) ---
+    try:
+        frames = []
+        for geo in ('state', 'nation'):
+            r = ctx.epidata_archive(
+                source=NHSN_SOURCE, signals=NHSN_SIGNAL_V5,
+                geo_type=geo, geo_values='*',
+                reference_time=EpiRange(start.isoformat(), end.isoformat()),
+                report_time=EpiRange(start.isoformat(), end.isoformat()),
+            ).df()
+            if r is not None and len(r):
+                frames.append(r)
+        if frames:
+            print("   Using Delphi V5 archive endpoint for versioned data.")
+            return _normalize_v5_archive(pd.concat(frames, ignore_index=True))
+    except Exception as e:
+        print(f"   (V5 archive unavailable: {type(e).__name__}: {e})")
+
+    # --- V4 covidcast via epidatpy (works until the V4 sunset ~Oct 2026) ---
+    try:
+        sw, ew = Week.fromdate(start), Week.fromdate(end)
+        se = int(f"{sw.year}{sw.week:02d}")
+        ee = int(f"{ew.year}{ew.week:02d}")
+        frames = []
+        for geo in ('state', 'nation'):
+            r = ctx.pub_covidcast(
+                data_source=NHSN_SOURCE, signals=NHSN_SIGNAL_V4,
+                time_type='week', time_values=EpiRange(se, ee),
+                geo_type=geo, geo_values='*', issues=EpiRange(se, ee),
+            ).df()
+            if r is not None and len(r):
+                frames.append(r)
+        if frames:
+            print("   Using Delphi V4 covidcast endpoint (epidatpy) for versioned data.")
+            return _normalize_epiweek_frame(pd.concat(frames, ignore_index=True))
+    except Exception as e:
+        print(f"   (V4 epidatpy fetch failed: {type(e).__name__}: {e})")
+    return None
+
+
+def _fetch_legacy(start, end):
+    """Fetch versioned NHSN data via the legacy delphi_epidata V4 client.
+    Returns a normalized frame, or None if unavailable."""
+    if Epidata is None:
+        return None
+    try:
+        sw, ew = Week.fromdate(start), Week.fromdate(end)
+        se = int(f"{sw.year}{sw.week:02d}")
+        ee = int(f"{ew.year}{ew.week:02d}")
+        frames = []
+        for geo in ('state', 'nation'):
+            res = Epidata.covidcast(
+                data_source=NHSN_SOURCE, signals=NHSN_SIGNAL_V4, time_type='week',
+                geo_type=geo, time_values=Epidata.range(se, ee),
+                geo_value='*', issues='*')
+            if res.get('result') == 1:
+                frames.append(pd.DataFrame(res['epidata']))
+            else:
+                raise RuntimeError(f"Epidata API error ({geo}): {res.get('message')}")
+        if frames:
+            print("   Using legacy delphi_epidata V4 client for versioned data.")
+            return _normalize_epiweek_frame(pd.concat(frames, ignore_index=True))
+    except Exception as e:
+        print(f"   (legacy delphi_epidata fetch failed: {type(e).__name__}: {e})")
+    return None
 
 
 def get_versioned_data():
-    TODAY = datetime.now()
+    """Fetch versioned (as-of) NHSN flu admissions from Delphi Epidata.
 
-    # Convert dates to epiweeks
-    start_week = Week.fromdate(date(2025, 10, 1))
-    end_week = Week.fromdate(TODAY)
+    Transition-ready and resilient: tries the Delphi V5 archive endpoint
+    (via epidatpy), then the V4 covidcast endpoint (epidatpy, then the legacy
+    delphi_epidata client). If everything is unavailable — e.g. during the
+    Delphi v5 migration (tentatively Oct 2026) — it returns an EMPTY frame
+    instead of raising, and the categorical/trend ensemble falls back to
+    finalized observed data (see create_categorical_ensemble_quantile), so the
+    pipeline keeps running.
+    """
+    start, end = _versioned_window()
 
-    start_epiweek = int(f"{start_week.year}{start_week.week:02d}")
-    end_epiweek = int(f"{end_week.year}{end_week.week:02d}")
+    # Preferred path: epidatpy (V5 archive -> V4 covidcast).
+    try:
+        df = _fetch_epidatpy(start, end)
+        if df is not None and len(df):
+            out = _finalize_versioned(df)
+            if out is not None and len(out):
+                return out
+    except ImportError:
+        print("   (epidatpy not installed; trying legacy delphi_epidata)")
+    except Exception as e:
+        print(f"   (epidatpy path errored: {type(e).__name__}: {e})")
 
-    result_adm = Epidata.covidcast(data_source='nhsn', signals='confirmed_admissions_flu_ew_prelim',
-        time_type='week', geo_type='state', time_values=Epidata.range(start_epiweek, end_epiweek), geo_value='*',
-                                issues='*')
-    result_adm_us = Epidata.covidcast(data_source='nhsn', signals='confirmed_admissions_flu_ew_prelim',
-        time_type='week', geo_type='nation', time_values=Epidata.range(start_epiweek, end_epiweek), geo_value='*',
-                                issues='*')
+    # Fallback: legacy delphi_epidata V4 client.
+    df = _fetch_legacy(start, end)
+    if df is not None and len(df):
+        out = _finalize_versioned(df)
+        if out is not None and len(out):
+            return out
 
-    # Convert to DataFrame
-    if result_adm['result'] == 1:
-        dfadm = pd.DataFrame(result_adm['epidata'])
-    else:
-        raise RuntimeError(f"Epidata API error (state): {result_adm.get('message')}")
-
-    if result_adm_us['result'] == 1:
-        dfadm_us = pd.DataFrame(result_adm_us['epidata'])
-    else:
-        raise RuntimeError(f"Epidata API error (nation): {result_adm_us.get('message')}")
-
-    dfadm = dfadm[['geo_value', 'time_value','issue','value']]
-    dfadm_us = dfadm_us[['geo_value', 'time_value','issue','value']]
-
-
-    df = pd.concat([dfadm, dfadm_us])
-    df['issue_date'] = df['issue'].apply(lambda x: Week(x//100, x %100).enddate())
-    df['target_end_date'] = df['time_value'].apply(lambda x: Week(x//100, x %100).enddate())
-
-    df['abbreviation'] = df['geo_value'].apply(lambda x: x.upper())
-
-    locations = pd.read_csv(BASE_DIR / 'data' / 'locations.csv')[['abbreviation', 'location', 'location_name']]
-
-    df = df.merge(locations, on='abbreviation')
-
-    return df
+    print("WARNING: versioned NHSN data unavailable from all endpoints.")
+    print("         Trend/categorical ensemble will fall back to finalized "
+          "observed data; pipeline continues.")
+    return _empty_versioned()
 
 
 def create_ensemble_method1(forecast_data):
