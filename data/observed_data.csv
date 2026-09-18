@@ -12249,17 +12249,19 @@ date,location,location_name,value,weekly_rate
 2026-08-08,55,Wisconsin,1.0,0.0168
 2026-08-15,55,Wisconsin,4.0,0.0671
 2026-08-22,55,Wisconsin,8.0,0.1342
-2026-08-29,55,Wisconsin,11.0,0.1845
+2026-08-29,55,Wisconsin,12.0,0.2013
 2026-09-05,55,Wisconsin,26.0,0.4362
+2026-09-12,55,Wisconsin,26.0,0.4362
 2026-07-11,06,California,97.0,0.246
 2026-07-18,06,California,81.0,0.2054
 2026-07-25,06,California,79.0,0.2003
 2026-08-01,06,California,79.0,0.2003
 2026-08-08,06,California,50.0,0.1268
 2026-08-15,06,California,69.0,0.175
-2026-08-22,06,California,84.0,0.213
-2026-08-29,06,California,98.0,0.2485
-2026-09-05,06,California,139.0,0.3525
+2026-08-22,06,California,85.0,0.2156
+2026-08-29,06,California,117.0,0.2967
+2026-09-05,06,California,145.0,0.3677
+2026-09-12,06,California,213.0,0.5402
 2026-07-11,13,Georgia,12.0,0.1073
 2026-07-18,13,Georgia,12.0,0.1073
 2026-07-25,13,Georgia,11.0,0.0984
@@ -12269,6 +12271,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,13,Georgia,11.0,0.0984
 2026-08-29,13,Georgia,18.0,0.161
 2026-09-05,13,Georgia,22.0,0.1968
+2026-09-12,13,Georgia,27.0,0.2415
 2026-07-11,38,North Dakota,3.0,0.3766
 2026-07-18,38,North Dakota,2.0,0.2511
 2026-07-25,38,North Dakota,2.0,0.2511
@@ -12278,6 +12281,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,38,North Dakota,1.0,0.1255
 2026-08-29,38,North Dakota,0.0,0.0
 2026-09-05,38,North Dakota,3.0,0.3766
+2026-09-12,38,North Dakota,3.0,0.3766
 2026-07-11,32,Nevada,13.0,0.3979
 2026-07-18,32,Nevada,10.0,0.306
 2026-07-25,32,Nevada,8.0,0.2448
@@ -12286,7 +12290,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,32,Nevada,10.0,0.306
 2026-08-22,32,Nevada,9.0,0.2754
 2026-08-29,32,Nevada,13.0,0.3979
-2026-09-05,32,Nevada,10.0,0.306
+2026-09-05,32,Nevada,11.0,0.3367
+2026-09-12,32,Nevada,12.0,0.3673
 2026-07-11,36,New York,15.0,0.0755
 2026-07-18,36,New York,11.0,0.0554
 2026-07-25,36,New York,11.0,0.0554
@@ -12294,8 +12299,9 @@ date,location,location_name,value,weekly_rate
 2026-08-08,36,New York,12.0,0.0604
 2026-08-15,36,New York,26.0,0.1309
 2026-08-22,36,New York,15.0,0.0755
-2026-08-29,36,New York,25.0,0.1258
-2026-09-05,36,New York,34.0,0.1711
+2026-08-29,36,New York,26.0,0.1309
+2026-09-05,36,New York,38.0,0.1913
+2026-09-12,36,New York,43.0,0.2164
 2026-07-11,42,Pennsylvania,124.0,0.9481
 2026-07-18,42,Pennsylvania,128.0,0.9787
 2026-07-25,42,Pennsylvania,121.0,0.9252
@@ -12305,6 +12311,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,42,Pennsylvania,140.0,1.0704
 2026-08-29,42,Pennsylvania,137.0,1.0475
 2026-09-05,42,Pennsylvania,135.0,1.0322
+2026-09-12,42,Pennsylvania,130.0,0.994
 2026-07-11,09,Connecticut,1.0,0.0272
 2026-07-18,09,Connecticut,3.0,0.0816
 2026-07-25,09,Connecticut,2.0,0.0544
@@ -12314,6 +12321,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,09,Connecticut,7.0,0.1905
 2026-08-29,09,Connecticut,4.0,0.1088
 2026-09-05,09,Connecticut,4.0,0.1088
+2026-09-12,09,Connecticut,3.0,0.0816
 2026-07-11,29,Missouri,13.0,0.2082
 2026-07-18,29,Missouri,7.0,0.1121
 2026-07-25,29,Missouri,6.0,0.0961
@@ -12323,24 +12331,27 @@ date,location,location_name,value,weekly_rate
 2026-08-22,29,Missouri,4.0,0.064
 2026-08-29,29,Missouri,31.0,0.4964
 2026-09-05,29,Missouri,12.0,0.1921
-2026-07-11,40,Oklahoma,6.0,0.1465
-2026-07-18,40,Oklahoma,8.0,0.1953
-2026-07-25,40,Oklahoma,4.0,0.0977
-2026-08-01,40,Oklahoma,10.0,0.2442
-2026-08-08,40,Oklahoma,8.0,0.1953
-2026-08-15,40,Oklahoma,6.0,0.1465
+2026-09-12,29,Missouri,24.0,0.3843
+2026-07-11,40,Oklahoma,8.0,0.1953
+2026-07-18,40,Oklahoma,9.0,0.2198
+2026-07-25,40,Oklahoma,5.0,0.1221
+2026-08-01,40,Oklahoma,14.0,0.3418
+2026-08-08,40,Oklahoma,9.0,0.2198
+2026-08-15,40,Oklahoma,8.0,0.1953
 2026-08-22,40,Oklahoma,3.0,0.0733
 2026-08-29,40,Oklahoma,8.0,0.1953
 2026-09-05,40,Oklahoma,7.0,0.1709
+2026-09-12,40,Oklahoma,18.0,0.4395
 2026-07-11,48,Texas,67.0,0.2141
 2026-07-18,48,Texas,61.0,0.1949
 2026-07-25,48,Texas,61.0,0.1949
 2026-08-01,48,Texas,61.0,0.1949
 2026-08-08,48,Texas,70.0,0.2237
-2026-08-15,48,Texas,61.0,0.1949
+2026-08-15,48,Texas,62.0,0.1981
 2026-08-22,48,Texas,102.0,0.326
 2026-08-29,48,Texas,92.0,0.294
-2026-09-05,48,Texas,144.0,0.4602
+2026-09-05,48,Texas,147.0,0.4698
+2026-09-12,48,Texas,181.0,0.5784
 2026-07-11,35,New Mexico,0.0,0.0
 2026-07-18,35,New Mexico,0.0,0.0
 2026-07-25,35,New Mexico,2.0,0.0939
@@ -12350,15 +12361,17 @@ date,location,location_name,value,weekly_rate
 2026-08-22,35,New Mexico,3.0,0.1408
 2026-08-29,35,New Mexico,3.0,0.1408
 2026-09-05,35,New Mexico,1.0,0.0469
-2026-07-11,US,US,750.0,0.2205
-2026-07-18,US,US,664.0,0.1952
-2026-07-25,US,US,695.0,0.2043
-2026-08-01,US,US,651.0,0.1914
-2026-08-08,US,US,630.0,0.1852
-2026-08-15,US,US,691.0,0.2032
-2026-08-22,US,US,871.0,0.2561
-2026-08-29,US,US,892.0,0.2623
-2026-09-05,US,US,1133.0,0.3331
+2026-09-12,35,New Mexico,4.0,0.1878
+2026-07-11,US,US,752.0,0.2211
+2026-07-18,US,US,665.0,0.1955
+2026-07-25,US,US,696.0,0.2046
+2026-08-01,US,US,656.0,0.1929
+2026-08-08,US,US,632.0,0.1858
+2026-08-15,US,US,695.0,0.2043
+2026-08-22,US,US,872.0,0.2564
+2026-08-29,US,US,915.0,0.269
+2026-09-05,US,US,1229.0,0.3614
+2026-09-12,US,US,1486.0,0.4369
 2026-07-11,17,Illinois,72.0,0.5665
 2026-07-18,17,Illinois,14.0,0.1101
 2026-07-25,17,Illinois,16.0,0.1259
@@ -12367,7 +12380,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,17,Illinois,28.0,0.2203
 2026-08-22,17,Illinois,10.0,0.0787
 2026-08-29,17,Illinois,13.0,0.1023
-2026-09-05,17,Illinois,33.0,0.2596
+2026-09-05,17,Illinois,108.0,0.8497
+2026-09-12,17,Illinois,36.0,0.2832
 2026-07-11,45,South Carolina,4.0,0.073
 2026-07-18,45,South Carolina,2.0,0.0365
 2026-07-25,45,South Carolina,7.0,0.1278
@@ -12377,6 +12391,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,45,South Carolina,6.0,0.1095
 2026-08-29,45,South Carolina,8.0,0.146
 2026-09-05,45,South Carolina,6.0,0.1095
+2026-09-12,45,South Carolina,11.0,0.2008
 2026-07-11,27,Minnesota,4.0,0.069
 2026-07-18,27,Minnesota,3.0,0.0518
 2026-07-25,27,Minnesota,2.0,0.0345
@@ -12386,6 +12401,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,27,Minnesota,3.0,0.0518
 2026-08-29,27,Minnesota,7.0,0.1208
 2026-09-05,27,Minnesota,10.0,0.1726
+2026-09-12,27,Minnesota,15.0,0.2589
 2026-07-11,30,Montana,1.0,0.0879
 2026-07-18,30,Montana,0.0,0.0
 2026-07-25,30,Montana,0.0,0.0
@@ -12393,8 +12409,9 @@ date,location,location_name,value,weekly_rate
 2026-08-08,30,Montana,0.0,0.0
 2026-08-15,30,Montana,1.0,0.0879
 2026-08-22,30,Montana,2.0,0.1759
-2026-08-29,30,Montana,3.0,0.2638
+2026-08-29,30,Montana,4.0,0.3517
 2026-09-05,30,Montana,4.0,0.3517
+2026-09-12,30,Montana,18.0,1.5828
 2026-07-11,04,Arizona,19.0,0.2506
 2026-07-18,04,Arizona,10.0,0.1319
 2026-07-25,04,Arizona,13.0,0.1715
@@ -12404,6 +12421,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,04,Arizona,6.0,0.0791
 2026-08-29,04,Arizona,15.0,0.1978
 2026-09-05,04,Arizona,15.0,0.1978
+2026-09-12,04,Arizona,19.0,0.2506
 2026-07-11,56,Wyoming,0.0,0.0
 2026-07-18,56,Wyoming,0.0,0.0
 2026-07-25,56,Wyoming,1.0,0.1702
@@ -12413,6 +12431,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,56,Wyoming,2.0,0.3404
 2026-08-29,56,Wyoming,0.0,0.0
 2026-09-05,56,Wyoming,0.0,0.0
+2026-09-12,56,Wyoming,0.0,0.0
 2026-07-11,12,Florida,125.0,0.5348
 2026-07-18,12,Florida,114.0,0.4878
 2026-07-25,12,Florida,98.0,0.4193
@@ -12421,7 +12440,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,12,Florida,115.0,0.492
 2026-08-22,12,Florida,123.0,0.5263
 2026-08-29,12,Florida,105.0,0.4493
-2026-09-05,12,Florida,143.0,0.6118
+2026-09-05,12,Florida,144.0,0.6161
+2026-09-12,12,Florida,195.0,0.8343
 2026-07-11,23,Maine,0.0,0.0
 2026-07-18,23,Maine,0.0,0.0
 2026-07-25,23,Maine,1.0,0.0712
@@ -12431,6 +12451,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,23,Maine,0.0,0.0
 2026-08-29,23,Maine,1.0,0.0712
 2026-09-05,23,Maine,1.0,0.0712
+2026-09-12,23,Maine,3.0,0.2135
 2026-07-11,54,West Virginia,1.0,0.0565
 2026-07-18,54,West Virginia,1.0,0.0565
 2026-07-25,54,West Virginia,0.0,0.0
@@ -12440,6 +12461,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,54,West Virginia,2.0,0.113
 2026-08-29,54,West Virginia,1.0,0.0565
 2026-09-05,54,West Virginia,1.0,0.0565
+2026-09-12,54,West Virginia,3.0,0.1695
 2026-07-11,18,Indiana,5.0,0.0722
 2026-07-18,18,Indiana,4.0,0.0578
 2026-07-25,18,Indiana,8.0,0.1155
@@ -12448,7 +12470,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,18,Indiana,9.0,0.13
 2026-08-22,18,Indiana,10.0,0.1444
 2026-08-29,18,Indiana,2.0,0.0289
-2026-09-05,18,Indiana,6.0,0.0867
+2026-09-05,18,Indiana,7.0,0.1011
+2026-09-12,18,Indiana,15.0,0.2166
 2026-07-11,41,Oregon,4.0,0.0936
 2026-07-18,41,Oregon,3.0,0.0702
 2026-07-25,41,Oregon,4.0,0.0936
@@ -12458,6 +12481,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,41,Oregon,4.0,0.0936
 2026-08-29,41,Oregon,1.0,0.0234
 2026-09-05,41,Oregon,8.0,0.1872
+2026-09-12,41,Oregon,8.0,0.1872
 2026-07-11,15,Hawaii,7.0,0.484
 2026-07-18,15,Hawaii,5.0,0.3457
 2026-07-25,15,Hawaii,1.0,0.0691
@@ -12467,6 +12491,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,15,Hawaii,5.0,0.3457
 2026-08-29,15,Hawaii,6.0,0.4149
 2026-09-05,15,Hawaii,3.0,0.2074
+2026-09-12,15,Hawaii,10.0,0.6915
 2026-07-11,21,Kentucky,11.0,0.2397
 2026-07-18,21,Kentucky,12.0,0.2615
 2026-07-25,21,Kentucky,11.0,0.2397
@@ -12476,6 +12501,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,21,Kentucky,7.0,0.1526
 2026-08-29,21,Kentucky,10.0,0.2179
 2026-09-05,21,Kentucky,9.0,0.1961
+2026-09-12,21,Kentucky,18.0,0.3923
 2026-07-11,24,Maryland,4.0,0.0639
 2026-07-18,24,Maryland,7.0,0.1118
 2026-07-25,24,Maryland,6.0,0.0958
@@ -12484,7 +12510,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,24,Maryland,7.0,0.1118
 2026-08-22,24,Maryland,4.0,0.0639
 2026-08-29,24,Maryland,7.0,0.1118
-2026-09-05,24,Maryland,9.0,0.1437
+2026-09-05,24,Maryland,10.0,0.1597
+2026-09-12,24,Maryland,8.0,0.1277
 2026-07-11,31,Nebraska,2.0,0.0997
 2026-07-18,31,Nebraska,1.0,0.0499
 2026-07-25,31,Nebraska,2.0,0.0997
@@ -12494,6 +12521,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,31,Nebraska,2.0,0.0997
 2026-08-29,31,Nebraska,0.0,0.0
 2026-09-05,31,Nebraska,0.0,0.0
+2026-09-12,31,Nebraska,2.0,0.0997
 2026-07-11,53,Washington,4.0,0.0503
 2026-07-18,53,Washington,2.0,0.0251
 2026-07-25,53,Washington,6.0,0.0754
@@ -12503,6 +12531,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,53,Washington,14.0,0.1759
 2026-08-29,53,Washington,22.0,0.2764
 2026-09-05,53,Washington,44.0,0.5529
+2026-09-12,53,Washington,61.0,0.7665
 2026-07-11,50,Vermont,0.0,0.0
 2026-07-18,50,Vermont,1.0,0.1542
 2026-07-25,50,Vermont,0.0,0.0
@@ -12512,6 +12541,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,50,Vermont,1.0,0.1542
 2026-08-29,50,Vermont,1.0,0.1542
 2026-09-05,50,Vermont,0.0,0.0
+2026-09-12,50,Vermont,1.0,0.1542
 2026-07-11,28,Mississippi,6.0,0.2039
 2026-07-18,28,Mississippi,6.0,0.2039
 2026-07-25,28,Mississippi,8.0,0.2718
@@ -12521,15 +12551,17 @@ date,location,location_name,value,weekly_rate
 2026-08-22,28,Mississippi,16.0,0.5437
 2026-08-29,28,Mississippi,11.0,0.3738
 2026-09-05,28,Mississippi,19.0,0.6456
+2026-09-12,28,Mississippi,6.0,0.2039
 2026-07-11,34,New Jersey,12.0,0.1263
 2026-07-18,34,New Jersey,11.0,0.1158
 2026-07-25,34,New Jersey,17.0,0.1789
-2026-08-01,34,New Jersey,11.0,0.1158
+2026-08-01,34,New Jersey,12.0,0.1263
 2026-08-08,34,New Jersey,20.0,0.2105
-2026-08-15,34,New Jersey,13.0,0.1368
+2026-08-15,34,New Jersey,14.0,0.1474
 2026-08-22,34,New Jersey,27.0,0.2842
 2026-08-29,34,New Jersey,22.0,0.2316
-2026-09-05,34,New Jersey,18.0,0.1895
+2026-09-05,34,New Jersey,19.0,0.2
+2026-09-12,34,New Jersey,40.0,0.421
 2026-07-11,51,Virginia,4.0,0.0454
 2026-07-18,51,Virginia,13.0,0.1475
 2026-07-25,51,Virginia,15.0,0.1702
@@ -12538,7 +12570,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,51,Virginia,9.0,0.1021
 2026-08-22,51,Virginia,21.0,0.2383
 2026-08-29,51,Virginia,15.0,0.1702
-2026-09-05,51,Virginia,15.0,0.1702
+2026-09-05,51,Virginia,16.0,0.1816
+2026-09-12,51,Virginia,28.0,0.3178
 2026-07-11,01,Alabama,7.0,0.1357
 2026-07-18,01,Alabama,12.0,0.2327
 2026-07-25,01,Alabama,6.0,0.1163
@@ -12548,6 +12581,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,01,Alabama,11.0,0.2133
 2026-08-29,01,Alabama,20.0,0.3878
 2026-09-05,01,Alabama,18.0,0.349
+2026-09-12,01,Alabama,23.0,0.4459
 2026-07-11,20,Kansas,3.0,0.101
 2026-07-18,20,Kansas,2.0,0.0673
 2026-07-25,20,Kansas,1.0,0.0337
@@ -12557,6 +12591,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,20,Kansas,4.0,0.1347
 2026-08-29,20,Kansas,6.0,0.202
 2026-09-05,20,Kansas,4.0,0.1347
+2026-09-12,20,Kansas,5.0,0.1683
 2026-07-11,47,Tennessee,20.0,0.2767
 2026-07-18,47,Tennessee,21.0,0.2905
 2026-07-25,47,Tennessee,19.0,0.2629
@@ -12566,6 +12601,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,47,Tennessee,20.0,0.2767
 2026-08-29,47,Tennessee,31.0,0.4289
 2026-09-05,47,Tennessee,31.0,0.4289
+2026-09-12,47,Tennessee,39.0,0.5396
 2026-07-11,26,Michigan,3.0,0.0296
 2026-07-18,26,Michigan,10.0,0.0986
 2026-07-25,26,Michigan,10.0,0.0986
@@ -12575,6 +12611,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,26,Michigan,77.0,0.7593
 2026-08-29,26,Michigan,13.0,0.1282
 2026-09-05,26,Michigan,25.0,0.2465
+2026-09-12,26,Michigan,24.0,0.2367
 2026-07-11,49,Utah,3.0,0.0856
 2026-07-18,49,Utah,3.0,0.0856
 2026-07-25,49,Utah,2.0,0.0571
@@ -12584,6 +12621,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,49,Utah,4.0,0.1142
 2026-08-29,49,Utah,7.0,0.1998
 2026-09-05,49,Utah,11.0,0.314
+2026-09-12,49,Utah,19.0,0.5423
 2026-07-11,11,District of Columbia,2.0,0.2848
 2026-07-18,11,District of Columbia,1.0,0.1424
 2026-07-25,11,District of Columbia,0.0,0.0
@@ -12593,15 +12631,17 @@ date,location,location_name,value,weekly_rate
 2026-08-22,11,District of Columbia,0.0,0.0
 2026-08-29,11,District of Columbia,1.0,0.1424
 2026-09-05,11,District of Columbia,3.0,0.4272
+2026-09-12,11,District of Columbia,2.0,0.2848
 2026-07-11,19,Iowa,2.0,0.0617
 2026-07-18,19,Iowa,0.0,0.0
 2026-07-25,19,Iowa,0.0,0.0
 2026-08-01,19,Iowa,0.0,0.0
-2026-08-08,19,Iowa,1.0,0.0309
+2026-08-08,19,Iowa,2.0,0.0617
 2026-08-15,19,Iowa,3.0,0.0926
 2026-08-22,19,Iowa,2.0,0.0617
 2026-08-29,19,Iowa,6.0,0.1851
 2026-09-05,19,Iowa,0.0,0.0
+2026-09-12,19,Iowa,1.0,0.0309
 2026-07-11,08,Colorado,4.0,0.0671
 2026-07-18,08,Colorado,1.0,0.0168
 2026-07-25,08,Colorado,7.0,0.1175
@@ -12611,6 +12651,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,08,Colorado,4.0,0.0671
 2026-08-29,08,Colorado,3.0,0.0504
 2026-09-05,08,Colorado,10.0,0.1679
+2026-09-12,08,Colorado,11.0,0.1846
 2026-07-11,33,New Hampshire,1.0,0.071
 2026-07-18,33,New Hampshire,1.0,0.071
 2026-07-25,33,New Hampshire,1.0,0.071
@@ -12620,6 +12661,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,33,New Hampshire,0.0,0.0
 2026-08-29,33,New Hampshire,2.0,0.1419
 2026-09-05,33,New Hampshire,0.0,0.0
+2026-09-12,33,New Hampshire,1.0,0.071
 2026-07-11,44,Rhode Island,0.0,0.0
 2026-07-18,44,Rhode Island,0.0,0.0
 2026-07-25,44,Rhode Island,0.0,0.0
@@ -12629,6 +12671,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,44,Rhode Island,0.0,0.0
 2026-08-29,44,Rhode Island,1.0,0.0899
 2026-09-05,44,Rhode Island,2.0,0.1798
+2026-09-12,44,Rhode Island,3.0,0.2697
 2026-07-11,05,Arkansas,3.0,0.0971
 2026-07-18,05,Arkansas,1.0,0.0324
 2026-07-25,05,Arkansas,0.0,0.0
@@ -12638,6 +12681,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,05,Arkansas,4.0,0.1295
 2026-08-29,05,Arkansas,1.0,0.0324
 2026-09-05,05,Arkansas,6.0,0.1943
+2026-09-12,05,Arkansas,4.0,0.1295
 2026-07-11,02,Alaska,4.0,0.5404
 2026-07-18,02,Alaska,4.0,0.5404
 2026-07-25,02,Alaska,0.0,0.0
@@ -12647,6 +12691,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,02,Alaska,3.0,0.4053
 2026-08-29,02,Alaska,7.0,0.9458
 2026-09-05,02,Alaska,19.0,2.5671
+2026-09-12,02,Alaska,21.0,2.8373
 2026-07-11,25,Massachusetts,2.0,0.028
 2026-07-18,25,Massachusetts,0.0,0.0
 2026-07-25,25,Massachusetts,3.0,0.042
@@ -12656,6 +12701,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,25,Massachusetts,4.0,0.0561
 2026-08-29,25,Massachusetts,4.0,0.0561
 2026-09-05,25,Massachusetts,5.0,0.0701
+2026-09-12,25,Massachusetts,8.0,0.1121
 2026-07-11,37,North Carolina,7.0,0.0634
 2026-07-18,37,North Carolina,10.0,0.0905
 2026-07-25,37,North Carolina,6.0,0.0543
@@ -12664,7 +12710,8 @@ date,location,location_name,value,weekly_rate
 2026-08-15,37,North Carolina,4.0,0.0362
 2026-08-22,37,North Carolina,13.0,0.1177
 2026-08-29,37,North Carolina,12.0,0.1086
-2026-09-05,37,North Carolina,17.0,0.1539
+2026-09-05,37,North Carolina,18.0,0.163
+2026-09-12,37,North Carolina,15.0,0.1358
 2026-07-11,46,South Dakota,0.0,0.0
 2026-07-18,46,South Dakota,2.0,0.2163
 2026-07-25,46,South Dakota,1.0,0.1081
@@ -12674,6 +12721,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,46,South Dakota,2.0,0.2163
 2026-08-29,46,South Dakota,2.0,0.2163
 2026-09-05,46,South Dakota,2.0,0.2163
+2026-09-12,46,South Dakota,3.0,0.3244
 2026-07-11,16,Idaho,4.0,0.1998
 2026-07-18,16,Idaho,3.0,0.1499
 2026-07-25,16,Idaho,1.0,0.05
@@ -12683,6 +12731,7 @@ date,location,location_name,value,weekly_rate
 2026-08-22,16,Idaho,0.0,0.0
 2026-08-29,16,Idaho,4.0,0.1998
 2026-09-05,16,Idaho,7.0,0.3497
+2026-09-12,16,Idaho,7.0,0.3497
 2026-07-11,39,Ohio,8.0,0.0673
 2026-07-18,39,Ohio,8.0,0.0673
 2026-07-25,39,Ohio,5.0,0.0421
@@ -12690,17 +12739,9 @@ date,location,location_name,value,weekly_rate
 2026-08-08,39,Ohio,7.0,0.0589
 2026-08-15,39,Ohio,9.0,0.0757
 2026-08-22,39,Ohio,13.0,0.1094
-2026-08-29,39,Ohio,15.0,0.1262
+2026-08-29,39,Ohio,16.0,0.1346
 2026-09-05,39,Ohio,16.0,0.1346
-2026-07-11,22,Louisiana,18.0,0.3915
-2026-07-18,22,Louisiana,25.0,0.5437
-2026-07-25,22,Louisiana,80.0,1.74
-2026-08-01,22,Louisiana,13.0,0.2827
-2026-08-08,22,Louisiana,19.0,0.4132
-2026-08-15,22,Louisiana,12.0,0.261
-2026-08-22,22,Louisiana,9.0,0.1957
-2026-08-29,22,Louisiana,21.0,0.4567
-2026-09-05,22,Louisiana,24.0,0.522
+2026-09-12,39,Ohio,16.0,0.1346
 2026-07-11,72,Puerto Rico,17.0,0.5307
 2026-07-18,72,Puerto Rico,24.0,0.7492
 2026-07-25,72,Puerto Rico,25.0,0.7804
@@ -12710,6 +12751,17 @@ date,location,location_name,value,weekly_rate
 2026-08-22,72,Puerto Rico,47.0,1.4672
 2026-08-29,72,Puerto Rico,43.0,1.3424
 2026-09-05,72,Puerto Rico,51.0,1.5921
+2026-09-12,72,Puerto Rico,64.0,1.9979
+2026-07-11,22,Louisiana,18.0,0.3915
+2026-07-18,22,Louisiana,25.0,0.5437
+2026-07-25,22,Louisiana,80.0,1.74
+2026-08-01,22,Louisiana,13.0,0.2827
+2026-08-08,22,Louisiana,19.0,0.4132
+2026-08-15,22,Louisiana,12.0,0.261
+2026-08-22,22,Louisiana,9.0,0.1957
+2026-08-29,22,Louisiana,21.0,0.4567
+2026-09-05,22,Louisiana,25.0,0.5437
+2026-09-12,22,Louisiana,32.0,0.696
 2026-07-11,10,Delaware,0.0,0.0
 2026-07-18,10,Delaware,1.0,0.0951
 2026-07-25,10,Delaware,2.0,0.1901
@@ -12719,3 +12771,4 @@ date,location,location_name,value,weekly_rate
 2026-08-22,10,Delaware,1.0,0.0951
 2026-08-29,10,Delaware,1.0,0.0951
 2026-09-05,10,Delaware,1.0,0.0951
+2026-09-12,10,Delaware,0.0,0.0
