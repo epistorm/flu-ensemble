@@ -2,7 +2,7 @@ name: Update Forecast Data and Deploy Dashboard
 
 on:
   schedule:
-    - cron: '0 13 * * 4'  # Every Thursday at 1 PM UTC
+    - cron: '47 12 * * 4'  # Every Thursday at 1 PM UTC
 
   # Allow manual trigger
   workflow_dispatch:
