@@ -387,10 +387,9 @@ h1 {
     margin: 10px 0;
 }
 
-/* Hover hint under the national forecast description */
+/* Hover hint near the national uncertainty-distribution chart */
 .overview-info-hint {
-    margin-top: 4px;
-    margin-bottom: 0;
+    margin: 8px 0 2px;
 }
 
 /* --- Map Layout: controls on the left, map on the right --- */

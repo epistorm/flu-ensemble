@@ -95,12 +95,14 @@ function updateGauges() {
         // Hide gauge and bar chart, show admissions distribution
         d3.select("#active-gauge-wrapper").style("display", "none");
         d3.select("#us-bar-chart").style("display", "none");
+        d3.select("#overview-info-hint").style("display", "none");
         d3.select("#admissions-dist").style("display", "block");
         updateAdmissionsDist();
     } else {
         // Show gauge and bar chart, hide admissions distribution
         d3.select("#active-gauge-wrapper").style("display", "block");
         d3.select("#us-bar-chart").style("display", "block");
+        d3.select("#overview-info-hint").style("display", "");
         d3.select("#admissions-dist").style("display", "none");
 
         const gaugeType = tab === "activity" ? "activity" : "trend";
