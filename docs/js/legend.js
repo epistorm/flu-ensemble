@@ -102,11 +102,61 @@ function activityInfoHtml() {
 
 function legendInfoHtml(type) {
     if (type === "trend") return trendInfoHtml();
-    if (type === "activity") return activityInfoHtml();
-    // "both": the national forecast description references activity and trend together
-    return activityInfoHtml() +
-        '<hr class="legend-tip-divider">' +
-        trendInfoHtml();
+    return activityInfoHtml();
+}
+
+// Full-number formatter for the national popover (e.g. 7408 -> "7,408").
+function _fmtFullCount(v) {
+    return Math.round(Math.abs(v)).toLocaleString("en-US");
+}
+
+// National forecast popover: tab-specific, with the actual US threshold values
+// (there is no per-state hover for the US as a whole).
+function nationalInfoHtml() {
+    const tab = AppState.currentTab;
+
+    if (tab === "activity") {
+        const th = (typeof activityThresholds !== "undefined" && activityThresholds)
+            ? activityThresholds["US"] : null;
+        let table = "";
+        if (th) {
+            table = '<table class="legend-tip-table">' +
+                '<thead><tr><th>Level</th><th>Weekly admissions</th></tr></thead><tbody>' +
+                '<tr><td>Low</td><td>0 – ' + _fmtFullCount(th.moderate) + '</td></tr>' +
+                '<tr><td>Medium</td><td>' + _fmtFullCount(th.moderate) + ' – ' + _fmtFullCount(th.high) + '</td></tr>' +
+                '<tr><td>High</td><td>' + _fmtFullCount(th.high) + ' – ' + _fmtFullCount(th.very_high) + '</td></tr>' +
+                '<tr><td>Very High</td><td>&ge; ' + _fmtFullCount(th.very_high) + '</td></tr>' +
+                '</tbody></table>';
+        }
+        return '<div class="legend-tip-title">Influenza Activity levels — United States</div>' +
+            '<p>How forecasted weekly hospital admissions compare to historical intensity, ' +
+            'using the Moving Epidemic Method over three seasons of data (2022–2024).</p>' +
+            table;
+    }
+
+    // Trend: thresholds depend on the selected forecast week (horizon).
+    const h = String(AppState.currentHorizon);
+    const tt = ((getActiveDashboardData() || {}).trend_thresholds || {})["US"];
+    const th = tt ? tt[h] : null;
+    let table = "";
+    if (th) {
+        const s = _fmtFullCount(th.stable);
+        const l = _fmtFullCount(th.large);
+        table = '<table class="legend-tip-table">' +
+            '<thead><tr><th>Category</th><th>Change in weekly admissions</th></tr></thead><tbody>' +
+            '<tr><td>Large decrease</td><td>&le; −' + l + '</td></tr>' +
+            '<tr><td>Decrease</td><td>−' + l + ' to −' + s + '</td></tr>' +
+            '<tr><td>Stable</td><td>−' + s + ' to +' + s + '</td></tr>' +
+            '<tr><td>Increase</td><td>+' + s + ' to +' + l + '</td></tr>' +
+            '<tr><td>Large increase</td><td>&ge; +' + l + '</td></tr>' +
+            '</tbody></table>';
+    }
+    const wk = Number(AppState.currentHorizon) + 1;
+    return '<div class="legend-tip-title">Influenza Trend categories — United States</div>' +
+        '<p>Forecasted change in weekly hospitalizations relative to the week before the ' +
+        'forecast (Week ' + wk + ' shown). Counts differing by fewer than 10 admissions ' +
+        'are always classified as Stable.</p>' +
+        table;
 }
 
 function attachLegendInfo(hintSel, type) {
@@ -119,7 +169,7 @@ function attachLegendInfo(hintSel, type) {
     }
 
     const show = () => {
-        tip.innerHTML = legendInfoHtml(type);
+        tip.innerHTML = (typeof type === "function") ? type() : legendInfoHtml(type);
         tip.classList.add("visible");
         const r = hintSel.node().getBoundingClientRect();
         // Measure, then place to the right of the hint (flip left if needed)

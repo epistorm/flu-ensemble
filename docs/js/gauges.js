@@ -14,11 +14,13 @@ function initGauges() {
     createGauge("#gauge-active", type);
     _currentGaugeType = type;
 
-    // Hover popover on the national forecast description. It always references
-    // both an activity level and a trend, so show the combined explanation.
+    // Hover popover near the national uncertainty distribution. Content is
+    // tab-specific (trend vs. activity) and shows the actual US threshold values
+    // at show time, since the US as a whole has no per-state hover.
     const overviewHint = d3.select("#overview-info-hint");
-    if (!overviewHint.empty() && typeof attachLegendInfo === "function") {
-        attachLegendInfo(overviewHint, "both");
+    if (!overviewHint.empty() && typeof attachLegendInfo === "function"
+        && typeof nationalInfoHtml === "function") {
+        attachLegendInfo(overviewHint, nationalInfoHtml);
     }
 }
 
