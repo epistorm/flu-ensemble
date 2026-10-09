@@ -9,6 +9,16 @@ let fipsToPopulation = {};
 
 let _hoverFips = null;
 
+// Compact count formatter for threshold labels (e.g. 1020 -> "1.0k", 118 -> "118")
+function formatThreshCount(v) {
+    const n = Math.round(Math.abs(v));
+    let s;
+    if (n >= 10000) s = d3.format(",.0f")(n / 1000) + "k";
+    else if (n >= 1000) s = d3.format(".1f")(n / 1000) + "k";
+    else s = String(n);
+    return s;
+}
+
 function initMap(topoData) {
     mapSvg = d3.select("#us-map")
         .attr("viewBox", `0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`)
@@ -299,8 +309,8 @@ async function handleMouseEnter(event, d) {
 
     // Build bar plot SVG
     const chartW = 240;
-    const chartH = 110;
-    const margin = { top: 8, right: 12, bottom: 30, left: 38 };
+    const chartH = 124;
+    const margin = { top: 8, right: 12, bottom: 44, left: 38 };
     const innerW = chartW - margin.left - margin.right;
     const innerH = chartH - margin.top - margin.bottom;
 
@@ -384,6 +394,70 @@ async function handleMouseEnter(event, d) {
             .attr("font-family", "Helvetica Neue, Arial, sans-serif")
             .text(shortLabels[cat]);
     });
+
+    // Threshold boundary numbers below the category labels. Each number sits at
+    // the dividing line between two categories (like axis ticks), so the reader
+    // sees e.g. "Low | 7k | Med | 25k | High | 42k | V.Hi" (weekly admissions).
+    let boundaries = null;   // values at each inter-category divider
+    let caption = null;
+    if (type === "activity") {
+        const th = (typeof activityThresholds !== "undefined" && activityThresholds)
+            ? activityThresholds[fips] : null;
+        if (th) {
+            boundaries = [
+                { value: th.moderate, signed: false },
+                { value: th.high, signed: false },
+                { value: th.very_high, signed: false }
+            ];
+            caption = "Weekly admissions";
+        }
+    } else {
+        const tt = ((getActiveDashboardData() || {}).trend_thresholds || {})[fips];
+        const th = tt ? tt[String(horizon)] : null;
+        if (th) {
+            boundaries = [
+                { value: -th.large, signed: true },
+                { value: -th.stable, signed: true },
+                { value: th.stable, signed: true },
+                { value: th.large, signed: true }
+            ];
+            caption = "Change in weekly admissions vs. last week";
+        }
+    }
+
+    if (boundaries) {
+        boundaries.forEach((b, i) => {
+            // Place each number at the gap between category i and i+1
+            const bx = (x(order[i]) + x.bandwidth() + x(order[i + 1])) / 2;
+            // small tick mark at the divider
+            g.append("line")
+                .attr("x1", bx).attr("y1", innerH + 17)
+                .attr("x2", bx).attr("y2", innerH + 21)
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 0.5);
+            const sign = b.signed ? (b.value < 0 ? "−" : "+") : "";
+            g.append("text")
+                .attr("class", "tooltip-thresh-label")
+                .attr("x", bx)
+                .attr("y", innerH + 30)
+                .attr("text-anchor", "middle")
+                .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+                .attr("font-size", "7px")
+                .attr("fill", "#999")
+                .text(sign + formatThreshCount(b.value));
+        });
+    }
+
+    // Units caption below the chart
+    if (caption) {
+        tooltip.append("div")
+            .attr("class", "tooltip-thresh-caption")
+            .style("font-size", "8px")
+            .style("color", "#999")
+            .style("margin-top", "2px")
+            .style("text-align", "center")
+            .text(caption);
+    }
 
     // Y-axis line
     g.append("line")

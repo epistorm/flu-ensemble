@@ -275,6 +275,112 @@ h1 {
     display: block;
 }
 
+/* Legend hover affordance + popover */
+.legend-info-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 10px;
+    color: #888;
+    cursor: help;
+    user-select: none;
+}
+
+.legend-info-hint:hover,
+.legend-info-hint:focus {
+    color: #4682B4;
+    outline: none;
+}
+
+.legend-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: 9px;
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.legend-info-tip {
+    position: fixed;
+    z-index: 1100;
+    max-width: 300px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    color: #555;
+    line-height: 1.4;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.legend-info-tip.visible {
+    opacity: 1;
+}
+
+.legend-info-tip p {
+    margin: 4px 0;
+}
+
+.legend-tip-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+
+.legend-tip-list {
+    margin: 4px 0;
+    padding-left: 16px;
+}
+
+.legend-tip-list li {
+    margin: 2px 0;
+}
+
+.legend-tip-note {
+    font-size: 10px;
+    color: #888;
+    font-style: italic;
+}
+
+.legend-tip-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin: 4px 0 6px;
+}
+
+.legend-tip-table th,
+.legend-tip-table td {
+    border: 1px solid #ddd;
+    padding: 2px 4px;
+    text-align: center;
+}
+
+.legend-tip-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    color: #333;
+}
+
+.legend-tip-table td:first-child {
+    text-align: left;
+    white-space: nowrap;
+}
+
 /* --- Map Layout: controls on the left, map on the right --- */
 .map-with-controls {
     display: flex;

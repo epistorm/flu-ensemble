@@ -208,8 +208,48 @@ def export_quantile_trajectories(quantile_ensemble, locations, subfolder="trajec
     print(f"  Wrote quantile trajectory files for {len(all_fips)} locations")
 
 
+# Trend (rate-change) category thresholds per horizon map to these precomputed
+# count columns in locations.csv (= rate/100k * population). The effective
+# boundary also applies a 10-admission floor (stable_count_max), matching the
+# ensemble's trend classification. "stable" is the |change| below which a week
+# is Stable; "large" is the |change| at/above which it is a Large increase/decrease.
+TREND_THRESHOLD_COLS = {
+    "0": {"stable": "count_rate0p3", "large": "count_rate1p7"},
+    "1": {"stable": "count_rate0p5", "large": "count_rate3"},
+    "2": {"stable": "count_rate0p7", "large": "count_rate4"},
+    "3": {"stable": "count_rate1", "large": "count_rate5"},
+}
+STABLE_COUNT_FLOOR = 10
+
+
+def compute_trend_thresholds(locations):
+    """Per-location, per-horizon trend change thresholds (in weekly admissions).
+
+    Returns {fips: {"0": {"stable": s, "large": l}, ...}}. A forecast whose
+    change from last week is within +/- stable is Stable; beyond stable is an
+    Increase/Decrease; at/beyond large is a Large increase/decrease.
+    """
+    out = {}
+    for _, row in locations.iterrows():
+        fips = str(row["location"])
+        if fips == "72":
+            continue
+        per_h = {}
+        for h, cols in TREND_THRESHOLD_COLS.items():
+            try:
+                stable = max(STABLE_COUNT_FLOOR, float(row[cols["stable"]]))
+                large = max(STABLE_COUNT_FLOOR, float(row[cols["large"]]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            per_h[h] = {"stable": round(stable), "large": round(large)}
+        if per_h:
+            out[fips] = per_h
+    return out
+
+
 def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations,
-                          output_name="dashboard_data.json", model_counts=None):
+                          output_name="dashboard_data.json", model_counts=None,
+                          trend_thresholds=None):
     """Export dashboard_data.json with trend/activity probabilities."""
     print(f"\nExporting {output_name}...")
 
@@ -243,6 +283,10 @@ def export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ense
         # {reference_date: {fips: n_contributing_member_models}} -- drives the
         # "thin ensemble" disclaimer on the frontend.
         "model_counts": model_counts or {},
+        # {fips: {horizon: {"stable": n, "large": n}}} -- weekly-admission change
+        # thresholds that define the trend (rate-change) categories; drives the
+        # per-state tooltip threshold labels on the frontend.
+        "trend_thresholds": trend_thresholds or {},
         "data": {},
     }
 
@@ -428,6 +472,10 @@ def main():
     # the CDC FluSight-ensemble). Drives the thin-ensemble disclaimer.
     model_counts = compute_model_counts()
 
+    # --- Trend (rate-change) thresholds per location/horizon ---
+    # Weekly-admission change thresholds that define the trend categories.
+    trend_thresholds = compute_trend_thresholds(locations)
+
     # --- Write locations.json ---
     os.makedirs(OUT_DIR, exist_ok=True)
     locations_out = []
@@ -449,7 +497,7 @@ def main():
     # --- Dashboard data (Median ensemble) ---
     if not categorical_ensemble.empty and not activity_ensemble.empty:
         export_dashboard_data(categorical_ensemble, activity_ensemble, quantile_ensemble, locations,
-                              model_counts=model_counts)
+                              model_counts=model_counts, trend_thresholds=trend_thresholds)
     else:
         print("\nWARNING: Missing categorical or activity ensemble data, skipping dashboard_data.json")
 
@@ -480,7 +528,7 @@ def main():
         if not lop_cat.empty and not lop_act.empty:
             export_dashboard_data(lop_cat, lop_act, lop_quant, locations,
                                   output_name="dashboard_data_lop.json",
-                                  model_counts=model_counts)
+                                  model_counts=model_counts, trend_thresholds=trend_thresholds)
         else:
             print("\nWARNING: Missing categorical or activity data, skipping dashboard_data_lop.json")
     else:
