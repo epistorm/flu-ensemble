@@ -279,6 +279,12 @@ function drawTrajectories() {
     // so the forecast stays readable regardless of what context is overlaid.
     const currentMax = d3.max(allValues) || 1;
 
+    // Latest date the plot actually shows (end of the forecast horizon). Overlaid
+    // season curves extend past this and are clipped, so only their values within
+    // this window should influence the y-axis -- otherwise an off-screen winter
+    // peak would make the axis far too tall early in the season.
+    const xMaxDate = d3.max(allDates);
+
     // Compute and store aligned season data for tooltip / drawing
     _alignedSeasonData = {};
     if (showSeasons && historicalSeasons?.[fips]) {
@@ -297,11 +303,14 @@ function drawTrajectories() {
         });
 
         // Let past-season peaks drive the y-axis ONLY when activity bands are
-        // off. With activity bands on, keep the forecast readable and let the
-        // taller season curves clip (they're clipped to the plot area).
+        // off, and only for the portion of each season that is actually visible
+        // in the plot's x-window. With activity bands on, keep the forecast
+        // readable and let the taller season curves clip to the plot area.
         if (!showActivityBands) {
             Object.values(_alignedSeasonData).forEach(lineData => {
-                lineData.forEach(d => allValues.push(d.value));
+                lineData.forEach(d => {
+                    if (d.date <= xMaxDate) allValues.push(d.value);
+                });
             });
         }
     }
