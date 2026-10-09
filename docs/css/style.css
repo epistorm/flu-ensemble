@@ -381,6 +381,18 @@ h1 {
     white-space: nowrap;
 }
 
+.legend-tip-divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 10px 0;
+}
+
+/* Hover hint under the national forecast description */
+.overview-info-hint {
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
 /* --- Map Layout: controls on the left, map on the right --- */
 .map-with-controls {
     display: flex;

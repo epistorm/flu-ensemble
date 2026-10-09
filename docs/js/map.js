@@ -421,7 +421,7 @@ async function handleMouseEnter(event, d) {
                 { value: th.stable, signed: true },
                 { value: th.large, signed: true }
             ];
-            caption = "Change in weekly admissions vs. last week";
+            caption = "Change in weekly admissions vs. the week before the forecast";
         }
     }
 

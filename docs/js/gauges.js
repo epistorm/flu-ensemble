@@ -13,6 +13,13 @@ function initGauges() {
     const type = AppState.currentTab === "activity" ? "activity" : "trend";
     createGauge("#gauge-active", type);
     _currentGaugeType = type;
+
+    // Hover popover on the national forecast description. It always references
+    // both an activity level and a trend, so show the combined explanation.
+    const overviewHint = d3.select("#overview-info-hint");
+    if (!overviewHint.empty() && typeof attachLegendInfo === "function") {
+        attachLegendInfo(overviewHint, "both");
+    }
 }
 
 function createGauge(selector, type) {

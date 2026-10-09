@@ -68,24 +68,25 @@ function updateLegend() {
 
 // --- Legend hover popover: general explanation of the levels ---
 
-function legendInfoHtml(type) {
-    if (type === "trend") {
-        return '<div class="legend-tip-title">Influenza Trend categories</div>' +
-            '<p>The forecasted direction of change in weekly hospitalizations relative to the ' +
-            'week before the forecast. Each category is defined by the change in rate ' +
-            'per 100,000 population (counts differing by fewer than 10 admissions are ' +
-            'always classified as Stable):</p>' +
-            '<table class="legend-tip-table">' +
-            '<thead><tr><th>Horizon</th><th>Stable</th><th>Inc / Dec</th><th>Large</th></tr></thead>' +
-            '<tbody>' +
-            '<tr><td>1 wk</td><td>&lt; 0.3</td><td>0.3–1.7</td><td>&ge; 1.7</td></tr>' +
-            '<tr><td>2 wk</td><td>&lt; 0.5</td><td>0.5–3.0</td><td>&ge; 3.0</td></tr>' +
-            '<tr><td>3 wk</td><td>&lt; 0.7</td><td>0.7–4.0</td><td>&ge; 4.0</td></tr>' +
-            '<tr><td>4 wk</td><td>&lt; 1.0</td><td>1.0–5.0</td><td>&ge; 5.0</td></tr>' +
-            '</tbody></table>' +
-            '<p class="legend-tip-note">Rate change per 100k. Hover a state for its exact ' +
-            'admission-count thresholds at the selected week.</p>';
-    }
+function trendInfoHtml() {
+    return '<div class="legend-tip-title">Influenza Trend categories</div>' +
+        '<p>The forecasted direction of change in weekly hospitalizations relative to the ' +
+        'week before the forecast. Each category is defined by the change in rate ' +
+        'per 100,000 population (counts differing by fewer than 10 admissions are ' +
+        'always classified as Stable):</p>' +
+        '<table class="legend-tip-table">' +
+        '<thead><tr><th>Horizon</th><th>Stable</th><th>Inc / Dec</th><th>Large</th></tr></thead>' +
+        '<tbody>' +
+        '<tr><td>1 wk</td><td>&lt; 0.3</td><td>0.3–1.7</td><td>&ge; 1.7</td></tr>' +
+        '<tr><td>2 wk</td><td>&lt; 0.5</td><td>0.5–3.0</td><td>&ge; 3.0</td></tr>' +
+        '<tr><td>3 wk</td><td>&lt; 0.7</td><td>0.7–4.0</td><td>&ge; 4.0</td></tr>' +
+        '<tr><td>4 wk</td><td>&lt; 1.0</td><td>1.0–5.0</td><td>&ge; 5.0</td></tr>' +
+        '</tbody></table>' +
+        '<p class="legend-tip-note">Rate change per 100k. Hover a state for its exact ' +
+        'admission-count thresholds at the selected week.</p>';
+}
+
+function activityInfoHtml() {
     return '<div class="legend-tip-title">Influenza Activity levels</div>' +
         '<p>How forecasted weekly hospital admissions compare to historical intensity, ' +
         'using the Moving Epidemic Method over three seasons of data (2022–2024). ' +
@@ -97,6 +98,15 @@ function legendInfoHtml(type) {
         '<li><b>Very High</b> &mdash; at or above the Very High threshold</li>' +
         '</ul>' +
         '<p class="legend-tip-note">Hover a state for its exact weekly-admission thresholds.</p>';
+}
+
+function legendInfoHtml(type) {
+    if (type === "trend") return trendInfoHtml();
+    if (type === "activity") return activityInfoHtml();
+    // "both": the national forecast description references activity and trend together
+    return activityInfoHtml() +
+        '<hr class="legend-tip-divider">' +
+        trendInfoHtml();
 }
 
 function attachLegendInfo(hintSel, type) {
