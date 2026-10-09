@@ -289,10 +289,17 @@ function drawTrajectories() {
         });
     }
 
-    // Add activity threshold values to domain if bands shown
+    // Activity bands: keep the y-axis driven by the observed/forecast data so
+    // the forecast isn't squished. We only extend the top to the first activity
+    // threshold ABOVE the data (so the current band and the next one stay
+    // visible) -- never all the way to very_high, which is often far higher.
     if (showActivityBands && activityThresholds?.[fips]) {
         const th = activityThresholds[fips];
-        allValues.push(th.very_high);
+        const dataMax = d3.max(allValues) || 0;
+        const nextThreshold = [th.moderate, th.high, th.very_high]
+            .filter(t => t != null && t > dataMax)
+            .sort((a, b) => a - b)[0];
+        if (nextThreshold != null) allValues.push(nextThreshold);
     }
 
     if (allDates.length === 0) return;
