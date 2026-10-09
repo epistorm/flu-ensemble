@@ -66,13 +66,21 @@ function initTrajectoryChart() {
         .attr("viewBox", `0 0 ${TRAJ_WIDTH} ${TRAJ_HEIGHT}`)
         .attr("preserveAspectRatio", "xMidYMid meet");
 
+    // Clip region so overlaid season curves taller than the y-axis are hidden
+    // above the plot instead of painting over the title/axes.
+    const innerW0 = TRAJ_WIDTH - TRAJ_MARGIN.left - TRAJ_MARGIN.right;
+    const innerH0 = TRAJ_HEIGHT - TRAJ_MARGIN.top - TRAJ_MARGIN.bottom;
+    trajSvg.append("defs").append("clipPath").attr("id", "traj-plot-clip")
+        .append("rect").attr("x", 0).attr("y", 0)
+        .attr("width", innerW0).attr("height", innerH0);
+
     trajChartG = trajSvg.append("g")
         .attr("transform", `translate(${TRAJ_MARGIN.left},${TRAJ_MARGIN.top})`);
 
     // Layers for proper z-ordering
     trajChartG.append("g").attr("class", "layer-activity-bands");
     trajChartG.append("g").attr("class", "layer-fan-bands");
-    trajChartG.append("g").attr("class", "layer-seasons");
+    trajChartG.append("g").attr("class", "layer-seasons").attr("clip-path", "url(#traj-plot-clip)");
     trajChartG.append("g").attr("class", "layer-median");
     trajChartG.append("g").attr("class", "layer-axes");
     trajChartG.append("g").attr("class", "layer-interaction");
@@ -267,7 +275,11 @@ function drawTrajectories() {
         refQuantileData.quantiles.p025.forEach(v => { if (v != null) allValues.push(v); });
     }
 
-    // Compute and store aligned season data for tooltip
+    // Max of the CURRENT season's observed + forecast. This anchors the y-axis
+    // so the forecast stays readable regardless of what context is overlaid.
+    const currentMax = d3.max(allValues) || 1;
+
+    // Compute and store aligned season data for tooltip / drawing
     _alignedSeasonData = {};
     if (showSeasons && historicalSeasons?.[fips]) {
         const currentSeasonStart = new Date(seasonYr, 8, 1); // Sep 1 of selected season
@@ -284,20 +296,23 @@ function drawTrajectories() {
                 .filter(d => d.date >= showFrom);
         });
 
-        Object.values(_alignedSeasonData).forEach(lineData => {
-            lineData.forEach(d => allValues.push(d.value));
-        });
+        // Let past-season peaks drive the y-axis ONLY when activity bands are
+        // off. With activity bands on, keep the forecast readable and let the
+        // taller season curves clip (they're clipped to the plot area).
+        if (!showActivityBands) {
+            Object.values(_alignedSeasonData).forEach(lineData => {
+                lineData.forEach(d => allValues.push(d.value));
+            });
+        }
     }
 
-    // Activity bands: keep the y-axis driven by the observed/forecast data so
-    // the forecast isn't squished. We only extend the top to the first activity
-    // threshold ABOVE the data (so the current band and the next one stay
-    // visible) -- never all the way to very_high, which is often far higher.
+    // Activity bands: extend the top only to the first activity threshold ABOVE
+    // the CURRENT forecast data (not the overlaid seasons), so the current band
+    // and the next one stay visible without squishing the forecast.
     if (showActivityBands && activityThresholds?.[fips]) {
         const th = activityThresholds[fips];
-        const dataMax = d3.max(allValues) || 0;
         const nextThreshold = [th.moderate, th.high, th.very_high]
-            .filter(t => t != null && t > dataMax)
+            .filter(t => t != null && t > currentMax)
             .sort((a, b) => a - b)[0];
         if (nextThreshold != null) allValues.push(nextThreshold);
     }
