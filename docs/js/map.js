@@ -307,8 +307,8 @@ async function handleMouseEnter(event, d) {
         selectedCat = classifyActivity(raw, fips) || entry.activity_most_likely;
     }
 
-    // Build bar plot SVG
-    const chartW = 240;
+    // Build bar plot SVG (trend has 5 categories + two-sided ranges, so a touch wider)
+    const chartW = type === "trend" ? 280 : 240;
     const chartH = 124;
     const margin = { top: 8, right: 12, bottom: 44, left: 38 };
     const innerW = chartW - margin.left - margin.right;
@@ -395,56 +395,51 @@ async function handleMouseEnter(event, d) {
             .text(shortLabels[cat]);
     });
 
-    // Threshold boundary numbers below the category labels. Each number sits at
-    // the dividing line between two categories (like axis ticks), so the reader
-    // sees e.g. "Low | 7k | Med | 25k | High | 42k | V.Hi" (weekly admissions).
-    let boundaries = null;   // values at each inter-category divider
+    // Per-category threshold ranges, shown under each bar in weekly admissions,
+    // e.g. activity "0-7.4k | 7.4k-25k | 25k-42k | 42k+".
+    let ranges = null;
     let caption = null;
+    const fmt = formatThreshCount;
     if (type === "activity") {
         const th = (typeof activityThresholds !== "undefined" && activityThresholds)
             ? activityThresholds[fips] : null;
         if (th) {
-            boundaries = [
-                { value: th.moderate, signed: false },
-                { value: th.high, signed: false },
-                { value: th.very_high, signed: false }
-            ];
+            ranges = {
+                low: "0–" + fmt(th.moderate),
+                moderate: fmt(th.moderate) + "–" + fmt(th.high),
+                high: fmt(th.high) + "–" + fmt(th.very_high),
+                very_high: fmt(th.very_high) + "+"
+            };
             caption = "Weekly admissions";
         }
     } else {
         const tt = ((getActiveDashboardData() || {}).trend_thresholds || {})[fips];
         const th = tt ? tt[String(horizon)] : null;
         if (th) {
-            boundaries = [
-                { value: -th.large, signed: true },
-                { value: -th.stable, signed: true },
-                { value: th.stable, signed: true },
-                { value: th.large, signed: true }
-            ];
-            caption = "Change in weekly admissions vs. the week before the forecast";
+            const s = fmt(th.stable);
+            const l = fmt(th.large);
+            ranges = {
+                large_decrease: "≤−" + l,
+                decrease: "−" + l + "–−" + s,
+                stable: "±" + s,
+                increase: "+" + s + "–+" + l,
+                large_increase: "≥+" + l
+            };
+            caption = "Change vs. the week before the forecast";
         }
     }
 
-    if (boundaries) {
-        boundaries.forEach((b, i) => {
-            // Place each number at the gap between category i and i+1
-            const bx = (x(order[i]) + x.bandwidth() + x(order[i + 1])) / 2;
-            // small tick mark at the divider
-            g.append("line")
-                .attr("x1", bx).attr("y1", innerH + 17)
-                .attr("x2", bx).attr("y2", innerH + 21)
-                .attr("stroke", "#ccc")
-                .attr("stroke-width", 0.5);
-            const sign = b.signed ? (b.value < 0 ? "−" : "+") : "";
+    if (ranges) {
+        order.forEach(cat => {
             g.append("text")
                 .attr("class", "tooltip-thresh-label")
-                .attr("x", bx)
-                .attr("y", innerH + 30)
+                .attr("x", x(cat) + x.bandwidth() / 2)
+                .attr("y", innerH + 24)
                 .attr("text-anchor", "middle")
                 .attr("font-family", "Helvetica Neue, Arial, sans-serif")
                 .attr("font-size", "7px")
                 .attr("fill", "#999")
-                .text(sign + formatThreshCount(b.value));
+                .text(ranges[cat] || "");
         });
     }
 

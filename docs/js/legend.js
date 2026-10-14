@@ -69,11 +69,10 @@ function updateLegend() {
 // --- Legend hover popover: general explanation of the levels ---
 
 function trendInfoHtml() {
-    return '<div class="legend-tip-title">Influenza Trend categories</div>' +
-        '<p>The forecasted direction of change in weekly hospitalizations relative to the ' +
-        'week before the forecast. Each category is defined by the change in rate ' +
-        'per 100,000 population (counts differing by fewer than 10 admissions are ' +
-        'always classified as Stable):</p>' +
+    return '<div class="legend-tip-title">Influenza Trend</div>' +
+        '<p>Forecasted direction of change vs. the week before the forecast, set by the ' +
+        '<b>change in rate per 100,000</b> (a change of fewer than 10 admissions is always ' +
+        '<b>Stable</b>):</p>' +
         '<table class="legend-tip-table">' +
         '<thead><tr><th>Horizon</th><th>Stable</th><th>Inc / Dec</th><th>Large</th></tr></thead>' +
         '<tbody>' +
@@ -82,22 +81,20 @@ function trendInfoHtml() {
         '<tr><td>3 wk</td><td>&lt; 0.7</td><td>0.7–4.0</td><td>&ge; 4.0</td></tr>' +
         '<tr><td>4 wk</td><td>&lt; 1.0</td><td>1.0–5.0</td><td>&ge; 5.0</td></tr>' +
         '</tbody></table>' +
-        '<p class="legend-tip-note">Rate change per 100k. Hover a state for its exact ' +
-        'admission-count thresholds at the selected week.</p>';
+        '<p class="legend-tip-note">Hover a state for its admission-count ranges.</p>';
 }
 
 function activityInfoHtml() {
-    return '<div class="legend-tip-title">Influenza Activity levels</div>' +
-        '<p>How forecasted weekly hospital admissions compare to historical intensity, ' +
-        'using the Moving Epidemic Method over three seasons of data (2022–2024). ' +
-        'Thresholds are specific to each state.</p>' +
+    return '<div class="legend-tip-title">Influenza Activity</div>' +
+        '<p>Where this week’s forecasted hospitalizations fall relative to a state’s ' +
+        'past flu seasons. <b>Thresholds are specific to each state.</b></p>' +
         '<ul class="legend-tip-list">' +
-        '<li><b>Low</b> &mdash; below the Medium threshold (~40% of weeks historically)</li>' +
-        '<li><b>Medium</b> &mdash; at or above Medium, below High (~50% of weeks)</li>' +
-        '<li><b>High</b> &mdash; at or above High, below Very High (~10% of weeks)</li>' +
-        '<li><b>Very High</b> &mdash; at or above the Very High threshold</li>' +
+        '<li><b>Low</b> &mdash; below typical seasonal activity</li>' +
+        '<li><b>Medium</b> &mdash; around typical seasonal activity</li>' +
+        '<li><b>High</b> &mdash; busier than most weeks of a season</li>' +
+        '<li><b>Very High</b> &mdash; near or above past seasonal peaks</li>' +
         '</ul>' +
-        '<p class="legend-tip-note">Hover a state for its exact weekly-admission thresholds.</p>';
+        '<p class="legend-tip-note">Hover a state for its weekly-admission ranges.</p>';
 }
 
 function legendInfoHtml(type) {
@@ -128,9 +125,9 @@ function nationalInfoHtml() {
                 '<tr><td>Very High</td><td>&ge; ' + _fmtFullCount(th.very_high) + '</td></tr>' +
                 '</tbody></table>';
         }
-        return '<div class="legend-tip-title">Influenza Activity levels — United States</div>' +
-            '<p>How forecasted weekly hospital admissions compare to historical intensity, ' +
-            'using the Moving Epidemic Method over three seasons of data (2022–2024).</p>' +
+        return '<div class="legend-tip-title">Influenza Activity — United States</div>' +
+            '<p>Where this week’s US forecast falls relative to past flu-season intensity. ' +
+            '<b>Thresholds are national.</b></p>' +
             table;
     }
 
@@ -152,10 +149,9 @@ function nationalInfoHtml() {
             '</tbody></table>';
     }
     const wk = Number(AppState.currentHorizon) + 1;
-    return '<div class="legend-tip-title">Influenza Trend categories — United States</div>' +
-        '<p>Forecasted change in weekly hospitalizations relative to the week before the ' +
-        'forecast (Week ' + wk + ' shown). Counts differing by fewer than 10 admissions ' +
-        'are always classified as Stable.</p>' +
+    return '<div class="legend-tip-title">Influenza Trend — United States</div>' +
+        '<p>Forecasted <b>change in weekly admissions</b> vs. the week before the forecast ' +
+        '(Week ' + wk + '). A change of fewer than 10 admissions is always <b>Stable</b>.</p>' +
         table;
 }
 

@@ -15,6 +15,10 @@ let historicalSeasons = null;
 let contextSeasons = {};
 let showSeasons = false;
 let showActivityBands = false;
+// "Show all levels" (sub-option of activity bands): extend the y-axis through the
+// Very High band. "Show full season": widen the x-axis to the whole Sep–Aug season.
+let showAllLevels = false;
+let showFullSeason = false;
 
 // Season styling (fallback palette covers any season without an explicit entry)
 const SEASON_STYLES = {
@@ -150,6 +154,9 @@ function toggleContextSection(section) {
         showActivityBands = !showActivityBands;
         d3.select("#ctx-activity .context-section-header").classed("active", showActivityBands);
         d3.select("#ctx-activity-body").classed("open", showActivityBands);
+    } else if (section === "fullseason") {
+        showFullSeason = !showFullSeason;
+        d3.select("#ctx-fullseason .context-section-header").classed("active", showFullSeason);
     }
     drawTrajectories();
 }
@@ -191,6 +198,18 @@ function updateSeasonButtons() {
 function buildActivitySection() {
     const body = d3.select("#ctx-activity-body");
     body.selectAll("*").remove();
+
+    // Sub-option: extend the y-axis up through the Very High band.
+    const allBtn = body.append("button")
+        .attr("class", "ctx-suboption" + (showAllLevels ? " active" : ""))
+        .attr("id", "ctx-all-levels")
+        .on("click", function () {
+            showAllLevels = !showAllLevels;
+            d3.select(this).classed("active", showAllLevels);
+            drawTrajectories();
+        });
+    allBtn.append("span").attr("class", "ctx-toggle-box");
+    allBtn.append("span").text("Show all levels");
 
     ACTIVITY_ORDER.forEach(cat => {
         const item = body.append("div").attr("class", "ctx-activity-item");
@@ -275,14 +294,12 @@ function drawTrajectories() {
         refQuantileData.quantiles.p025.forEach(v => { if (v != null) allValues.push(v); });
     }
 
-    // Max of the CURRENT season's observed + forecast. This anchors the y-axis
-    // so the forecast stays readable regardless of what context is overlaid.
-    const currentMax = d3.max(allValues) || 1;
-
-    // Latest date the plot actually shows (end of the forecast horizon). Overlaid
-    // season curves extend past this and are clipped, so only their values within
-    // this window should influence the y-axis -- otherwise an off-screen winter
-    // peak would make the axis far too tall early in the season.
+    // X-window upper bound: the forecast horizon by default, or the whole season
+    // (through Aug 31) when "Show full season" is on. The y-axis is scaled to the
+    // data that actually falls inside this window (observed + forecast + any
+    // overlaid season curves), so the forecast never gets squished by data that
+    // is off-screen to the right (e.g. an unshown winter peak early in the season).
+    if (showFullSeason) allDates.push(seasonEnd);
     const xMaxDate = d3.max(allDates);
 
     // Compute and store aligned season data for tooltip / drawing
@@ -302,28 +319,21 @@ function drawTrajectories() {
                 .filter(d => d.date >= showFrom);
         });
 
-        // Let past-season peaks drive the y-axis ONLY when activity bands are
-        // off, and only for the portion of each season that is actually visible
-        // in the plot's x-window. With activity bands on, keep the forecast
-        // readable and let the taller season curves clip to the plot area.
-        if (!showActivityBands) {
-            Object.values(_alignedSeasonData).forEach(lineData => {
-                lineData.forEach(d => {
-                    if (d.date <= xMaxDate) allValues.push(d.value);
-                });
+        // Overlaid season curves drive the y-axis for the portion visible in the
+        // current x-window. (Curves extend past it and are clipped to the plot.)
+        Object.values(_alignedSeasonData).forEach(lineData => {
+            lineData.forEach(d => {
+                if (d.date <= xMaxDate) allValues.push(d.value);
             });
-        }
+        });
     }
 
-    // Activity bands: extend the top only to the first activity threshold ABOVE
-    // the CURRENT forecast data (not the overlaid seasons), so the current band
-    // and the next one stay visible without squishing the forecast.
-    if (showActivityBands && activityThresholds?.[fips]) {
-        const th = activityThresholds[fips];
-        const nextThreshold = [th.moderate, th.high, th.very_high]
-            .filter(t => t != null && t > currentMax)
-            .sort((a, b) => a - b)[0];
-        if (nextThreshold != null) allValues.push(nextThreshold);
+    // Activity bands shade the background but do NOT drive the y-axis by default
+    // -- the axis stays scaled to the forecast. "Show all levels" opts in to
+    // extending the axis up through the Very High threshold so all bands show.
+    if (showActivityBands && showAllLevels && activityThresholds?.[fips]) {
+        const vh = activityThresholds[fips].very_high;
+        if (vh != null) allValues.push(vh);
     }
 
     if (allDates.length === 0) return;
