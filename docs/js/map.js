@@ -307,8 +307,8 @@ async function handleMouseEnter(event, d) {
         selectedCat = classifyActivity(raw, fips) || entry.activity_most_likely;
     }
 
-    // Build bar plot SVG (trend has 5 categories + two-sided ranges, so a touch wider)
-    const chartW = type === "trend" ? 280 : 240;
+    // Build bar plot SVG
+    const chartW = 240;
     const chartH = 124;
     const margin = { top: 8, right: 12, bottom: 44, left: 38 };
     const innerW = chartW - margin.left - margin.right;
@@ -418,12 +418,14 @@ async function handleMouseEnter(event, d) {
         if (th) {
             const s = fmt(th.stable);
             const l = fmt(th.large);
+            // Unsigned magnitudes -- the bar label (Lg↓/Dec/Stbl/Inc/Lg↑) already
+            // carries the direction, which avoids confusing double-negatives.
             ranges = {
-                large_decrease: "≤−" + l,
-                decrease: "−" + l + "–−" + s,
-                stable: "±" + s,
-                increase: "+" + s + "–+" + l,
-                large_increase: "≥+" + l
+                large_decrease: "≥" + l,
+                decrease: s + "–" + l,
+                stable: "<" + s,
+                increase: s + "–" + l,
+                large_increase: "≥" + l
             };
             caption = "Change vs. the week before the forecast";
         }

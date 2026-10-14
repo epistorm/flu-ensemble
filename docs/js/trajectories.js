@@ -154,9 +154,6 @@ function toggleContextSection(section) {
         showActivityBands = !showActivityBands;
         d3.select("#ctx-activity .context-section-header").classed("active", showActivityBands);
         d3.select("#ctx-activity-body").classed("open", showActivityBands);
-    } else if (section === "fullseason") {
-        showFullSeason = !showFullSeason;
-        d3.select("#ctx-fullseason .context-section-header").classed("active", showFullSeason);
     }
     drawTrajectories();
 }
@@ -164,6 +161,18 @@ function toggleContextSection(section) {
 function buildSeasonsSection() {
     const body = d3.select("#ctx-seasons-body");
     body.selectAll("*").remove();
+
+    // Sub-option: widen the x-axis to the whole Sep–Aug season.
+    const fullBtn = body.append("button")
+        .attr("class", "ctx-suboption" + (showFullSeason ? " active" : ""))
+        .attr("id", "ctx-full-season")
+        .on("click", function () {
+            showFullSeason = !showFullSeason;
+            d3.select(this).classed("active", showFullSeason);
+            drawTrajectories();
+        });
+    fullBtn.append("span").attr("class", "ctx-toggle-box");
+    fullBtn.append("span").text("Show full season");
 
     Object.keys(contextSeasons).sort().forEach(season => {
         const style = seasonStyle(season);
@@ -299,7 +308,7 @@ function drawTrajectories() {
     // data that actually falls inside this window (observed + forecast + any
     // overlaid season curves), so the forecast never gets squished by data that
     // is off-screen to the right (e.g. an unshown winter peak early in the season).
-    if (showFullSeason) allDates.push(seasonEnd);
+    if (showSeasons && showFullSeason) allDates.push(seasonEnd);
     const xMaxDate = d3.max(allDates);
 
     // Compute and store aligned season data for tooltip / drawing

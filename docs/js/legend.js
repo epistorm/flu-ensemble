@@ -70,18 +70,18 @@ function updateLegend() {
 
 function trendInfoHtml() {
     return '<div class="legend-tip-title">Influenza Trend</div>' +
-        '<p>Forecasted direction of change vs. the week before the forecast, set by the ' +
-        '<b>change in rate per 100,000</b> (a change of fewer than 10 admissions is always ' +
-        '<b>Stable</b>):</p>' +
+        '<p>A forecast is labeled by <b>how much</b> flu hospitalizations change from the ' +
+        'week before — the <b>change in rate per 100,000</b>. Each level below applies to ' +
+        'both an increase and a decrease of that size.</p>' +
         '<table class="legend-tip-table">' +
-        '<thead><tr><th>Horizon</th><th>Stable</th><th>Inc / Dec</th><th>Large</th></tr></thead>' +
+        '<thead><tr><th>Weeks<br>ahead</th><th>Stable</th><th>Increase /<br>Decrease</th><th>Large<br>Inc / Dec</th></tr></thead>' +
         '<tbody>' +
-        '<tr><td>1 wk</td><td>&lt; 0.3</td><td>0.3–1.7</td><td>&ge; 1.7</td></tr>' +
-        '<tr><td>2 wk</td><td>&lt; 0.5</td><td>0.5–3.0</td><td>&ge; 3.0</td></tr>' +
-        '<tr><td>3 wk</td><td>&lt; 0.7</td><td>0.7–4.0</td><td>&ge; 4.0</td></tr>' +
-        '<tr><td>4 wk</td><td>&lt; 1.0</td><td>1.0–5.0</td><td>&ge; 5.0</td></tr>' +
+        '<tr><td>1</td><td>&lt; 0.3</td><td>0.3 – 1.7</td><td>&ge; 1.7</td></tr>' +
+        '<tr><td>2</td><td>&lt; 0.5</td><td>0.5 – 3.0</td><td>&ge; 3.0</td></tr>' +
+        '<tr><td>3</td><td>&lt; 0.7</td><td>0.7 – 4.0</td><td>&ge; 4.0</td></tr>' +
+        '<tr><td>4</td><td>&lt; 1.0</td><td>1.0 – 5.0</td><td>&ge; 5.0</td></tr>' +
         '</tbody></table>' +
-        '<p class="legend-tip-note">Hover a state for its admission-count ranges.</p>';
+        '<p class="legend-tip-note">Hover a state for its ranges in weekly admissions.</p>';
 }
 
 function activityInfoHtml() {
@@ -105,6 +105,14 @@ function legendInfoHtml(type) {
 // Full-number formatter for the national popover (e.g. 7408 -> "7,408").
 function _fmtFullCount(v) {
     return Math.round(Math.abs(v)).toLocaleString("en-US");
+}
+
+// Compact formatter (e.g. 1020 -> "1.0k") for the denser trend table.
+function _fmtCompactCount(v) {
+    const n = Math.round(Math.abs(v));
+    if (n >= 10000) return Math.round(n / 1000) + "k";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+    return String(n);
 }
 
 // National forecast popover: tab-specific, with the actual US threshold values
@@ -131,27 +139,27 @@ function nationalInfoHtml() {
             table;
     }
 
-    // Trend: thresholds depend on the selected forecast week (horizon).
-    const h = String(AppState.currentHorizon);
+    // Trend: show all forecast weeks (horizons) in US admission counts, mirroring
+    // the legend table's structure so the two read consistently.
     const tt = ((getActiveDashboardData() || {}).trend_thresholds || {})["US"];
-    const th = tt ? tt[h] : null;
     let table = "";
-    if (th) {
-        const s = _fmtFullCount(th.stable);
-        const l = _fmtFullCount(th.large);
+    if (tt) {
+        let rows = "";
+        for (let hh = 0; hh <= 3; hh++) {
+            const th = tt[String(hh)];
+            if (!th) continue;
+            const s = _fmtCompactCount(th.stable);
+            const l = _fmtCompactCount(th.large);
+            rows += '<tr><td>' + (hh + 1) + '</td><td>&lt; ' + s + '</td><td>' +
+                s + ' – ' + l + '</td><td>&ge; ' + l + '</td></tr>';
+        }
         table = '<table class="legend-tip-table">' +
-            '<thead><tr><th>Category</th><th>Change in weekly admissions</th></tr></thead><tbody>' +
-            '<tr><td>Large decrease</td><td>&le; −' + l + '</td></tr>' +
-            '<tr><td>Decrease</td><td>−' + l + ' to −' + s + '</td></tr>' +
-            '<tr><td>Stable</td><td>−' + s + ' to +' + s + '</td></tr>' +
-            '<tr><td>Increase</td><td>+' + s + ' to +' + l + '</td></tr>' +
-            '<tr><td>Large increase</td><td>&ge; +' + l + '</td></tr>' +
-            '</tbody></table>';
+            '<thead><tr><th>Weeks<br>ahead</th><th>Stable</th><th>Increase /<br>Decrease</th><th>Large<br>Inc / Dec</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table>';
     }
-    const wk = Number(AppState.currentHorizon) + 1;
     return '<div class="legend-tip-title">Influenza Trend — United States</div>' +
-        '<p>Forecasted <b>change in weekly admissions</b> vs. the week before the forecast ' +
-        '(Week ' + wk + '). A change of fewer than 10 admissions is always <b>Stable</b>.</p>' +
+        '<p>A forecast is labeled by <b>how much</b> weekly admissions change from the week ' +
+        'before. Each level applies to both an increase and a decrease of that size.</p>' +
         table;
 }
 
