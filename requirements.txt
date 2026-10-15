@@ -1,6 +1,8 @@
 numpy<2
 pandas>=2,<3
-pyarrow
+# Pinned <18: newer pyarrow wheels are built against numpy 2.x and fail to import
+# under the numpy<2 pin (pandas then reports a misleading "missing pyarrow").
+pyarrow>=14,<18
 requests
 epiweeks
 scipy

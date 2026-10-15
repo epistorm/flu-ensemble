@@ -28,10 +28,10 @@ from season_utils import season_of  # noqa: E402
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
-# Full 17-member superset across all supported seasons. Members absent in a
+# Full 18-member superset across all supported seasons. Members absent in a
 # given week/season simply 404 and are skipped (see fetch_model_forecasts), so
-# a model can be listed before it starts submitting (e.g. NU-FLARE, expected to
-# begin in the 2026-27 season).
+# a model can be listed before it starts submitting (e.g. NU-FLARE and
+# MOBS-GLEAM_NCB_FLUH, expected to begin in the 2026-27 season).
 # NOTE: MOBS-GLEAM_FLUH (2023-24, 2024-25) and MOBS-GLEAM_RL_FLUH (2025-26) are
 # two distinct MOBS models, not a rename; NU_UCSD-GLEAM_AI_FLUH is 2023-24 only.
 MODELS = [
@@ -42,6 +42,7 @@ MODELS = [
     'MOBS-EpyStrain_Flu',
     'MOBS-GLEAM_FLUH',
     'MOBS-GLEAM_RL_FLUH',
+    'MOBS-GLEAM_NCB_FLUH',
     'NU-PGF_FLUH',
     'NU-EMBERS',
     'NU-FLARE',
