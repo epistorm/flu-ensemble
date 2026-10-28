@@ -16,7 +16,7 @@ import sys
 import time
 import pandas as pd
 import requests
-from io import StringIO
+from io import StringIO, BytesIO
 from datetime import datetime
 from pathlib import Path
 from epiweeks import Week
@@ -30,8 +30,9 @@ DATA_DIR.mkdir(exist_ok=True)
 
 # Full 18-member superset across all supported seasons. Members absent in a
 # given week/season simply 404 and are skipped (see fetch_model_forecasts), so
-# a model can be listed before it starts submitting (e.g. NU-FLARE and
-# MOBS-GLEAM_NCB_FLUH, expected to begin in the 2026-27 season).
+# a model can be listed before it starts submitting. Submissions may be .csv or
+# .parquet -- list_model_files/fetch_model_forecasts handle both (MOBS-EpyStrain_Flu
+# switched to parquet in 2026-27).
 # NOTE: MOBS-GLEAM_FLUH (2023-24, 2024-25) and MOBS-GLEAM_RL_FLUH (2025-26) are
 # two distinct MOBS models, not a rename; NU_UCSD-GLEAM_AI_FLUH is 2023-24 only.
 MODELS = [
@@ -210,8 +211,12 @@ def _get_with_retry(url, tries=5, timeout=20, headers=None):
 
 
 def list_model_files(model_name):
-    """List available {date}-{model}.csv filenames via the GitHub contents API
-    (one request per model, avoids probing for 404s). Returns {} on failure."""
+    """List available {date}-{model} forecast files via the GitHub contents API
+    (one request per model, avoids probing for 404s). Handles both .csv and
+    .parquet submissions -- the hub accepts either, and some teams switched to
+    parquet mid-project. If a date has both, parquet wins. Returns {date: url}
+    (the url carries the extension, so the reader can pick the parser), or {}
+    on failure."""
     api = ("https://api.github.com/repos/cdcepi/FluSight-forecast-hub/"
            f"contents/model-output/{model_name}")
     resp = _get_with_retry(api, headers=_github_headers())
@@ -225,9 +230,15 @@ def list_model_files(model_name):
     if isinstance(entries, list):
         for e in entries:
             name = e.get("name", "")
-            if name.endswith(f"-{model_name}.csv"):
-                date_str = name[:10]
-                files[date_str] = e.get("download_url")
+            is_parquet = name.endswith(f"-{model_name}.parquet")
+            is_csv = name.endswith(f"-{model_name}.csv")
+            if not (is_parquet or is_csv):
+                continue
+            date_str = name[:10]
+            # Prefer parquet when a date happens to have both formats.
+            if date_str in files and not is_parquet:
+                continue
+            files[date_str] = e.get("download_url")
     return files
 
 
@@ -252,7 +263,10 @@ def fetch_model_forecasts(model_name, start_date, end_date):
             print(f"    Failed {date_str} (after retries)")
             continue
         try:
-            df = pd.read_csv(StringIO(resp.text))
+            if url.endswith(".parquet"):
+                df = pd.read_parquet(BytesIO(resp.content))
+            else:
+                df = pd.read_csv(StringIO(resp.text))
         except Exception as e:
             print(f"    Parse error {date_str}: {e}")
             continue

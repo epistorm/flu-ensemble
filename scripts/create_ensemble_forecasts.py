@@ -10,6 +10,7 @@ historical seasons. (Scoring depends on the revisable observed truth and is
 recomputed in full by calculate_scores.py.)
 """
 
+import argparse
 import sys
 import pandas as pd
 from pathlib import Path
@@ -76,7 +77,25 @@ def merge_parquet(new_df, path, key_cols):
     print(f"   {path.name}: +{len(new_df)} new rows -> {len(combined)} total")
 
 
-def main():
+def parse_args():
+    p = argparse.ArgumentParser(description="Create Epistorm ensemble forecasts (incremental).")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument(
+        "--recompute", nargs="+", metavar="YYYY-MM-DD", default=None,
+        help="Reference date(s) to recompute even if already cached. Use this "
+             "when a member is added retroactively (e.g. a team backfills or "
+             "switches submission format), since an existing date is otherwise "
+             "treated as final and skipped.")
+    g.add_argument(
+        "--recompute-all", action="store_true",
+        help="Recompute every reference date present in all_forecasts.parquet "
+             "(ignores the cache entirely). Use after a change that affects all "
+             "weeks, e.g. a new member spanning the whole season.")
+    return p.parse_args()
+
+
+def main(recompute=None, recompute_all=False):
+    recompute = set(recompute or [])
     print("=" * 60)
     print("Creating Ensemble Forecasts (incremental)")
     print("=" * 60)
@@ -97,13 +116,25 @@ def main():
     # forecasts, so an existing reference date never changes -- only compute
     # reference dates missing from the cache. (Scoring, which depends on the
     # revisable observed truth, is recomputed in full by calculate_scores.py.)
+    # A date passed via --recompute / --recompute-all is forced back in, which
+    # is how a retroactively-added member gets folded into an existing week.
     target_dates = set(_date_key(df['reference_date']))
-    done_dates = existing_ref_dates(QUANTILE_PATH)
+    if recompute_all:
+        done_dates = set()
+        print("\n   --recompute-all: ignoring cache, recomputing all reference dates.")
+    else:
+        done_dates = existing_ref_dates(QUANTILE_PATH) - recompute
+        forced = sorted(recompute & target_dates)
+        skipped = sorted(recompute - target_dates)
+        if forced:
+            print(f"\n   --recompute: forcing {len(forced)} cached date(s): " + ", ".join(forced))
+        if skipped:
+            print(f"   --recompute: ignoring date(s) not in all_forecasts.parquet: " + ", ".join(skipped))
     missing = sorted(target_dates - done_dates)
     if not missing:
         print("\nAll reference dates already present. Nothing to compute.")
         return
-    print(f"\n   {len(missing)} new reference date(s) to compute:\n   " + ", ".join(missing))
+    print(f"\n   {len(missing)} reference date(s) to compute:\n   " + ", ".join(missing))
     df_new = df[_date_key(df['reference_date']).isin(missing)].copy()
 
     # --- Quantile ensembles ---
@@ -161,8 +192,9 @@ def main():
 
 
 if __name__ == "__main__":
+    args = parse_args()
     try:
-        main()
+        main(recompute=args.recompute, recompute_all=args.recompute_all)
     except Exception as e:
         print(f"\nERROR: {e}")
         import traceback

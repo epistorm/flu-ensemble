@@ -10,6 +10,9 @@ on:
       branch:
         description: 'Branch to run on'
         default: 'main'
+      recompute:
+        description: 'Space-separated reference date(s) to recompute even if already cached (e.g. for a member added retroactively). Leave blank for a normal incremental run.'
+        default: ''
 
 permissions:
   contents: write
@@ -53,9 +56,11 @@ jobs:
       - name: Create ensemble forecasts
         env:
           COVIDCAST_API_KEY: ${{ secrets.COVIDCAST_API_KEY }}
+          RECOMPUTE: ${{ github.event.inputs.recompute }}
         run: |
           echo "Creating ensemble forecasts..."
-          python scripts/create_ensemble_forecasts.py
+          # $RECOMPUTE is left unquoted so each date becomes a separate argument.
+          python scripts/create_ensemble_forecasts.py ${RECOMPUTE:+--recompute $RECOMPUTE}
 
       - name: Calculate scores
         run: |

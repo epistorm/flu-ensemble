@@ -94,7 +94,7 @@
         <p>This dashboard provides an interactive view of the ensemble's forecasts along with evaluation metrics that compare performance against a baseline model and other contributing forecasters.</p>
 
         <h2>Contributing Models</h2>
-        <p>The ensemble combines quantile forecasts from the individual models submitted to the CDC FluSight hub. Because the dashboard now includes past seasons, the full set spans more models than any single season: membership has grown from 4 models in 2023-24 to 7 in 2024-25, 10 in 2025-26, and 11 in 2026-27, and each week's ensemble uses whichever models submitted that week. The table below lists every contributing model and the seasons in which it participated.</p>
+        <p>The ensemble combines quantile forecasts from the individual models submitted to the CDC FluSight hub. Because the dashboard now includes past seasons, the full set spans more models than any single season: membership has grown from 4 models in 2023-24 to 7 in 2024-25, 10 in 2025-26, and 12 in 2026-27, and each week's ensemble uses whichever models submitted that week. The table below lists every contributing model and the seasons in which it participated.</p>
         <table class="model-table">
             <thead>
                 <tr><th>Model</th><th>Description</th><th>Seasons</th></tr>
@@ -106,7 +106,7 @@
                 <tr><td>MIGHTE-Base</td><td>Distributional gradient-boosting (LightGBM) model drawing on surveillance history, seasonality, wastewater, and emergency-department signals</td><td>2026-27</td></tr>
                 <tr><td>MIGHTE-Joint</td><td>Weighted ensemble of LightGBM, ARIMA, and autoregressive models integrating Google Trends data</td><td>2024-25, 2025-26</td></tr>
                 <tr><td>MIGHTE-Nsemble</td><td>Adaptive ensemble combining ARIMA, LightGBM, and SVM with dynamically updated weights</td><td>2023-24 – 2026-27</td></tr>
-                <tr><td>MOBS-EpyStrain_Flu</td><td>Age-structured SLIR compartmental model with contact matrices, vaccination, and seasonal transmissibility</td><td>2025-26</td></tr>
+                <tr><td>MOBS-EpyStrain_Flu</td><td>Age-structured SLIR compartmental model with contact matrices, vaccination, and seasonal transmissibility</td><td>2025-26, 2026-27</td></tr>
                 <tr><td>MOBS-GLEAM_FLUH</td><td>GLEAM metapopulation model with age structure and human mobility data</td><td>2023-24, 2024-25</td></tr>
                 <tr><td>MOBS-GLEAM_NCB_FLUH</td><td>GLEAM metapopulation model using a neural contextual bandit to select simulation trajectories</td><td>2026-27</td></tr>
                 <tr><td>MOBS-GLEAM_RL_FLUH</td><td>Reinforcement learning (Q-learning) for selecting optimal GLEAM simulation trajectories</td><td>2025-26</td></tr>
