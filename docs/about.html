@@ -94,24 +94,30 @@
         <p>This dashboard provides an interactive view of the ensemble's forecasts along with evaluation metrics that compare performance against a baseline model and other contributing forecasters.</p>
 
         <h2>Contributing Models</h2>
-        <p>The ensemble combines quantile forecasts from the individual models submitted to the CDC FluSight hub. Because the dashboard now includes past seasons, the full set spans more models than any single season: membership has grown from 4 models in 2023-24 to 7 in 2024-25 and 10 in 2025-26, and each week's ensemble uses whichever models submitted that week. The table below lists every contributing model and the seasons in which it participated.</p>
+        <p>The ensemble combines quantile forecasts from the individual models submitted to the CDC FluSight hub. Because the dashboard now includes past seasons, the full set spans more models than any single season: membership has grown from 4 models in 2023-24 to 7 in 2024-25, 10 in 2025-26, and 11 in 2026-27, and each week's ensemble uses whichever models submitted that week. The table below lists every contributing model and the seasons in which it participated.</p>
         <table class="model-table">
             <thead>
                 <tr><th>Model</th><th>Description</th><th>Seasons</th></tr>
             </thead>
             <tbody>
-                <tr><td>CEPH-Rtrend_fluH</td><td>Renewal equation method using Bayesian estimation of Rt from hospitalization data</td><td>2023-24 – 2025-26</td></tr>
-                <tr><td>Gatech-ensemble_prob</td><td>Ensemble of deep learning attention-based probabilistic architectures with multiple time-series predictors</td><td>2024-25, 2025-26</td></tr>
-                <tr><td>Gatech-ensemble_stat</td><td>Ensemble combining ARIMA, ARGO, ARGO2, and LightGBM with Google Trends data</td><td>2025-26</td></tr>
+                <tr><td>CEPH-Rtrend_fluH</td><td>Renewal equation method using Bayesian estimation of Rt from hospitalization data</td><td>2023-24 – 2026-27</td></tr>
+                <tr><td>Gatech-ensemble_prob</td><td>Ensemble of deep learning attention-based probabilistic architectures with multiple time-series predictors</td><td>2024-25 – 2026-27</td></tr>
+                <tr><td>Gatech-ensemble_stat</td><td>Ensemble combining ARIMA, ARGO, ARGO2, and LightGBM with Google Trends data</td><td>2025-26, 2026-27</td></tr>
+                <tr><td>MIGHTE-Base</td><td>Distributional gradient-boosting (LightGBM) model drawing on surveillance history, seasonality, wastewater, and emergency-department signals</td><td>2026-27</td></tr>
                 <tr><td>MIGHTE-Joint</td><td>Weighted ensemble of LightGBM, ARIMA, and autoregressive models integrating Google Trends data</td><td>2024-25, 2025-26</td></tr>
-                <tr><td>MIGHTE-Nsemble</td><td>Adaptive ensemble combining ARIMA, LightGBM, and SVM with dynamically updated weights</td><td>2023-24 – 2025-26</td></tr>
+                <tr><td>MIGHTE-Nsemble</td><td>Adaptive ensemble combining ARIMA, LightGBM, and SVM with dynamically updated weights</td><td>2023-24 – 2026-27</td></tr>
                 <tr><td>MOBS-EpyStrain_Flu</td><td>Age-structured SLIR compartmental model with contact matrices, vaccination, and seasonal transmissibility</td><td>2025-26</td></tr>
                 <tr><td>MOBS-GLEAM_FLUH</td><td>GLEAM metapopulation model with age structure and human mobility data</td><td>2023-24, 2024-25</td></tr>
+                <tr><td>MOBS-GLEAM_NCB_FLUH</td><td>GLEAM metapopulation model using a neural contextual bandit to select simulation trajectories</td><td>2026-27</td></tr>
                 <tr><td>MOBS-GLEAM_RL_FLUH</td><td>Reinforcement learning (Q-learning) for selecting optimal GLEAM simulation trajectories</td><td>2025-26</td></tr>
                 <tr><td>NEU_ISI-AdaptiveEnsemble</td><td>Dynamic ensemble combining Flu Scenario Modeling Hub projections, rejecting divergent trajectories</td><td>2024-25, 2025-26</td></tr>
-                <tr><td>NEU_ISI-FluBcast</td><td>Stochastic age-structured compartmental model with behavioral feedback and risk-averse dynamics</td><td>2024-25, 2025-26</td></tr>
+                <tr><td>NEU_ISI-FluBcast</td><td>Stochastic age-structured compartmental model with behavioral feedback and risk-averse dynamics</td><td>2024-25 – 2026-27</td></tr>
+                <tr><td>NU-EMBERS</td><td>Extended SLIR compartmental model formulated as a branching process with sequentially calibrated state estimation</td><td>2026-27</td></tr>
+                <tr><td>NU-FLARE</td><td>Seasonal ARIMA model with exogenous covariates for vaccination coverage, vaccine effectiveness, A/H3N2 circulation, and transmission rates</td><td>2026-27</td></tr>
                 <tr><td>NU-PGF_FLUH</td><td>Branching process model using probability generating functions with Bayesian inference of Rt</td><td>2025-26</td></tr>
                 <tr><td>NU_UCSD-GLEAM_AI_FLUH</td><td>GLEAM mechanistic metapopulation model combined with AI/deep-learning components</td><td>2023-24</td></tr>
+                <tr><td>Xi_lab-GLEAM_AI</td><td>Deep-learning surrogate (emulator) of the GLEAM metapopulation model, calibrated weekly to recent admissions via Approximate Bayesian Computation</td><td>2026-27</td></tr>
+                <tr><td>Xi_lab-GLEAM_AI_hybrid</td><td>Hybrid of the GLEAM-AI surrogate and pretrained time-series foundation models (e.g., TimesFM)</td><td>2026-27</td></tr>
             </tbody>
         </table>
         <p>The CDC's <strong>FluSight-baseline</strong> model is used as a reference for scoring but is not included in the ensemble. The <strong>FluSight-ensemble</strong> (CDC's own ensemble) is also tracked for comparison.</p>
