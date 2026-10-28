@@ -76,6 +76,28 @@ def default_start_date():
     return datetime(start_year, 9, 1)
 
 
+def to_numpy_backend(df):
+    """Coerce pandas/pyarrow extension dtypes to plain numpy dtypes, in place.
+
+    The FluSight hub accepts parquet submissions written with pyarrow-backed
+    extension types (double[pyarrow], arrow string, date32, ...). Left as-is,
+    those columns are not interchangeable with the numpy dtypes the CSV path
+    produces: numeric values survive as ExtensionArrays through concat and the
+    scoring pivot, then break numpy's ufunc casting (WIS/coverage fail with
+    "cannot cast 'add' output from dtype('O') to dtype('float64')"). Normalize
+    every column so CSV- and parquet-sourced rows merge cleanly."""
+    for col in df.columns:
+        dt = df[col].dtype
+        if not (str(dt).endswith('[pyarrow]') or isinstance(dt, pd.api.extensions.ExtensionDtype)):
+            continue
+        # .to_numpy() picks the right numpy dtype per column (double->float64,
+        # int32->int, arrow string/date32->object) across pandas versions, where
+        # the is_*_dtype predicates disagree about arrow types. Object-typed
+        # strings/dates are then handled by the existing str/to_datetime passes.
+        df[col] = df[col].to_numpy()
+    return df
+
+
 def merge_parquet(new_df, output_file, key_cols):
     """Union new_df with any existing parquet at output_file (new rows win)."""
     if new_df is None or new_df.empty:
@@ -86,6 +108,9 @@ def merge_parquet(new_df, output_file, key_cols):
         combined = pd.concat([existing, new_df], ignore_index=True)
     else:
         combined = new_df
+    # Normalize any pyarrow-backed columns (from parquet submissions, or from a
+    # previously written cache) to numpy so the file is dtype-consistent.
+    to_numpy_backend(combined)
     for col in ('reference_date', 'target_end_date'):
         if col in combined.columns:
             combined[col] = pd.to_datetime(combined[col])
@@ -265,6 +290,7 @@ def fetch_model_forecasts(model_name, start_date, end_date):
         try:
             if url.endswith(".parquet"):
                 df = pd.read_parquet(BytesIO(resp.content))
+                to_numpy_backend(df)
             else:
                 df = pd.read_csv(StringIO(resp.text))
         except Exception as e:

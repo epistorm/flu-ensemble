@@ -199,6 +199,10 @@ if __name__ == "__main__":
     predsall = all_forecasts[all_forecasts.output_type == 'quantile'].copy()
     predsall['target_end_date'] = pd.to_datetime(predsall['target_end_date'])
     predsall['output_type_id'] = predsall["output_type_id"].astype(float)
+    # Force plain numpy float64: hub parquet submissions use pyarrow-backed
+    # dtypes, which survive the pivot as ExtensionArrays and then break numpy's
+    # ufunc casting in WIS/coverage ("cannot cast 'add' output from O to float64").
+    predsall['value'] = pd.to_numeric(predsall['value'], errors='coerce').astype('float64')
     predsall = predsall[predsall.target == 'wk inc flu hosp']
     predsall = predsall.rename(columns={'model': 'Model'})
     print(f"   Prepared {len(predsall)} quantile predictions")
