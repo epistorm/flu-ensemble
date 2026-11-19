@@ -243,8 +243,8 @@ function handleStateClick(event, d) {
     if (typeof setTrajectoryLocation === "function") {
         setTrajectoryLocation(fips);
     }
-    // Scroll to trajectory section
-    document.getElementById("trajectory-section")?.scrollIntoView({ behavior: "smooth" });
+    // Clicking a state updates the overview sidebar and the Forecast Details
+    // chart in place; we intentionally do not scroll the page.
 }
 
 // --- Rich Tooltip with Bar Plot PMF ---
@@ -348,7 +348,7 @@ async function handleMouseEnter(event, d) {
             .attr("text-anchor", "end")
             .attr("dominant-baseline", "middle")
             .attr("font-size", "8px")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
             .attr("fill", "#999")
             .text(`${Math.round(v * 100)}%`);
     });
@@ -375,7 +375,7 @@ async function handleMouseEnter(event, d) {
                 .attr("x", x(cat) + x.bandwidth() / 2)
                 .attr("y", y(prob) - 3)
                 .attr("text-anchor", "middle")
-                .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+                .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
                 .text(`${Math.round(prob * 100)}%`);
         }
     });
@@ -391,7 +391,7 @@ async function handleMouseEnter(event, d) {
             .attr("x", x(cat) + x.bandwidth() / 2)
             .attr("y", innerH + 13)
             .attr("text-anchor", "middle")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
             .text(shortLabels[cat]);
     });
 
@@ -438,7 +438,7 @@ async function handleMouseEnter(event, d) {
                 .attr("x", x(cat) + x.bandwidth() / 2)
                 .attr("y", innerH + 24)
                 .attr("text-anchor", "middle")
-                .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+                .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
                 .attr("font-size", "7px")
                 .attr("fill", "#999")
                 .text(ranges[cat] || "");
@@ -699,7 +699,7 @@ function drawAdmissionsTooltip(tooltip, fips, refDate, horizon) {
         .attr("transform", `translate(0,${innerH})`)
         .call(d3.axisBottom(x).ticks(4).tickFormat(d3.timeFormat("%b %d")))
         .selectAll("text")
-        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+        .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
         .attr("font-size", "8px")
         .attr("fill", "#999");
 
@@ -717,7 +717,7 @@ function drawAdmissionsTooltip(tooltip, fips, refDate, horizon) {
             .attr("text-anchor", "end")
             .attr("dominant-baseline", "middle")
             .attr("font-size", "8px")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
             .attr("fill", "#999")
             .text(fmtY(v));
     });
@@ -747,7 +747,7 @@ function drawAdmissionsTooltip(tooltip, fips, refDate, horizon) {
         svg.append("text")
             .attr("x", lx + 15).attr("y", legendY + 1)
             .attr("dominant-baseline", "central")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
             .attr("font-size", "7px")
             .attr("fill", "#666")
             .text(item.label);

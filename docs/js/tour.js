@@ -2,10 +2,10 @@
 
 const TOUR_STEPS = [
     {
-        selectors: ["#tab-bar", ".card-map"],
+        selectors: [".card-map"],
         infoKey: "map",
-        title: "Dashboard Views & Map",
-        text: "Switch between three views: <strong>Influenza Trend</strong>, <strong>Influenza Activity</strong>, and <strong>Weekly Hospital Admissions</strong> to see the forecast levels within each state. Hover over a state to see detailed forecast information, and click a state to jump to its trajectory forecast below.",
+        title: "Map & Views",
+        text: "Use the <strong>Map View</strong> selector to color the map by <strong>Activity</strong>, <strong>Trend</strong>, or <strong>Admissions</strong>. Hover over a state to see detailed forecast information, and click a state to load its forecast into the summary panel on the right and the detailed chart below. The summary panel always shows both the activity and trend forecasts.",
         position: "bottom",
         wide: true,
         dropdown: {
@@ -14,7 +14,7 @@ const TOUR_STEPS = [
                 {
                     title: "Influenza Trend",
                     body: "The trend forecast predicts whether flu hospitalizations are expected to <em>increase</em>, <em>decrease</em>, or <em>remain stable</em> relative to a reference week (the week prior to horizon 0). " +
-                    "Each horizon and model trajectory is classified into one of five categories based on the predicted change in hospitalization rate per 100,000: " +
+                    "Each horizon's forecast is classified into one of five categories based on the predicted change in hospitalization rate per 100,000: " +
                     "<strong>Large Decrease</strong>, <strong>Decrease</strong>, <strong>Stable</strong>, <strong>Increase</strong>, and <strong>Large Increase</strong>.<br><br>" +
                     "To reduce the impact of reporting revisions and noise in small counts, any week pair with a difference of fewer than 10 hospital admissions is automatically classified as <strong>Stable</strong>. " +
                     "The remaining categories are determined by the magnitude and direction of the rate change difference between the forecasted and reference weeks. See the table below for thresholds (decreasing categories assume a negative change):<br><br> " +
@@ -45,7 +45,7 @@ const TOUR_STEPS = [
                         '[2] Lozano JE. lozalojo/mem: Second release of the MEM R library. Zenodo. Available from: <a href="https://zenodo.org/record/165983" target="_blank" style="color:#888;">https://zenodo.org/record/165983</a>.</em>'
                 },
                 {
-                    title: "Weekly Hospital Admissions",
+                    title: "Admissions",
                     body: "This view shows the forecasted weekly influenza hospital admissions at different levels of uncertainty. " +
                         "The map is colored by the predicted hospitalization count (or rate per 100,000 population). " +
                         "Hover over a state to see the four-week-ahead forecasted hospitalization time series with different prediction intervals " +
@@ -69,7 +69,7 @@ const TOUR_STEPS = [
         title: "Uncertainty Estimates",
         text: "In order to show spatial uncertainty, we provide buttons that allow you to view different uncertainty estimates for each state. " +
             "For the <strong>Influenza Trend</strong> and <strong>Influenza Activity</strong> views, the <strong>Most Likely</strong> forecast is the category with the highest probability (the mode). " +
-            "For <strong>Weekly Hospital Admissions</strong>, it is the median prediction of the forecast.<br><br>" +
+            "For <strong>Admissions</strong>, it is the median prediction of the forecast.<br><br>" +
             "The <strong>Lower End</strong> and <strong>Upper End</strong> estimates correspond to the 10th and 90th percentiles. " +
             "They indicate the probability that during a given week we will see either a lower or higher outcome than the most likely estimate " +
             "(for the trend and activity forecasts, the more certain forecasts could show the same category for the lower and upper predictions).",
@@ -78,15 +78,15 @@ const TOUR_STEPS = [
     {
         selector: ".card-gauges",
         infoKey: "gauges",
-        title: "US Summary",
-        text: "This panel summarizes the most likely estimates for forecasted trend, activity, and hospital admissions, updating based on the selected view. The gauge dial shows a weighted average position across the trend or activity probability distribution for the US as a whole, while the bar chart below displays the full uncertainty distribution. The Weekly Hospital Admissions tab shows the binned probability distribution of forecasted admissions.",
+        title: "Forecast Summary",
+        text: "This panel summarizes the forecast for the <strong>selected location</strong> — the United States by default, or whichever state you click on the map or choose from the location dropdown below. It always shows <strong>both</strong> the activity level and the trend forecast. Each gauge dial points to a weighted-average position across that probability distribution, and the bar chart beside it displays the full uncertainty distribution across categories.",
         position: "left"
     },
     {
         selector: "#trajectory-section",
         infoKey: "traj",
-        title: "Trajectory Forecasts",
-        text: "The trajectory chart shows individual model realizations for a four week ahead forecast for a selected state.<br><br>" +
+        title: "Forecast Details",
+        text: "This chart shows the four-week-ahead <strong>quantile forecast</strong> for the selected state. The shaded bands are <strong>prediction intervals</strong> (50%, 90%, and 95%) around the median forecast line, indicating the range within which the actual value is expected to fall.<br><br>" +
             "<strong>Click on the chart</strong> to change the date the forecast was generated. " +
             "<strong>Black dots</strong> represent surveillance data points known at the time of the forecast. " +
             "<strong>White dots with a black outline</strong> represent surveillance data that was reported after the forecast was made.<br><br>" +
@@ -99,11 +99,9 @@ const TOUR_STEPS = [
     {
         selector: ".traj-controls",
         infoKey: "traj",
-        title: "Trajectory Controls",
+        title: "Chart Controls",
         text: "<strong>Location</strong> selects which state you want to view. You can also change the state by clicking on the map above. " +
-            "The <strong>Trajectories</strong> slider controls how many individual simulations are shown (0\u2013200). " +
-            "The <strong>Prediction Intervals</strong> buttons overlay fixed-time statistics on the chart: " +
-            "specifically the 50%, 90%, and 95% prediction intervals, which show the range within which the actual value is expected to fall.",
+            "The <strong>Ensemble</strong> toggle switches between the two ensemble methods \u2014 <strong>Median</strong> and <strong>LOP</strong> (linear opinion pool) \u2014 which combine the contributing models' forecasts in different ways.",
         position: "bottom"
     },
     {
@@ -111,10 +109,8 @@ const TOUR_STEPS = [
         infoKey: "traj",
         title: "Add Context",
         text: "In some instances it's useful to see how the current season and the forecast compare to other seasons or other contextual information.<br><br>" +
-            "<strong>Compare to Other Seasons</strong> overlays every other season's hospitalization curve behind the current visualization. " +
-            "<strong>Activity Levels</strong> visually shows where the thresholds fall for each location, so you can see where each week's forecast falls relative to historical intensity levels. " +
-            "<strong>Trend Forecasts</strong> highlights and colors each trajectory by its predicted direction (e.g., increasing or decreasing) " +
-            "depending on which forecast week is chosen (the 1-to-4-week-ahead forecast).",
+            "<strong>Compare to Other Seasons</strong> overlays every other season's hospitalization curve behind the current forecast. " +
+            "<strong>Activity Levels</strong> shades the chart by the activity thresholds for the location, so you can see where each week's forecast falls relative to historical intensity levels.",
         position: "left"
     }
 ];

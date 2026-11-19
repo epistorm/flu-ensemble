@@ -8,26 +8,45 @@ const GAUGE_CENTER_Y = GAUGE_HEIGHT - 16;
 
 let _currentGaugeType = null; // track to avoid unnecessary recreation
 
-function initGauges() {
-    // Create initial gauge based on default tab
-    const type = AppState.currentTab === "activity" ? "activity" : "trend";
-    createGauge("#gauge-active", type);
-    _currentGaugeType = type;
+// The overview card follows the selected location (US by default, or a state
+// chosen by clicking the map / the trajectory location dropdown).
+function getSidebarLocation() {
+    const fips = AppState.selectedState || "US";
+    let name;
+    if (fips === "US") {
+        name = "United States";
+    } else if (typeof fipsToName !== "undefined" && fipsToName[fips]) {
+        name = fipsToName[fips];
+    } else {
+        name = `State ${fips}`;
+    }
+    return { fips, name };
+}
 
-    // Hover popover near the national uncertainty distribution. Content is
-    // tab-specific (trend vs. activity) and shows the actual US threshold values
-    // at show time, since the US as a whole has no per-state hover.
-    const overviewHint = d3.select("#overview-info-hint");
-    if (!overviewHint.empty() && typeof attachLegendInfo === "function"
-        && typeof nationalInfoHtml === "function") {
-        attachLegendInfo(overviewHint, nationalInfoHtml);
+function initGauges() {
+    // Both national gauges are always shown (activity + trend)
+    createGauge("#gauge-activity", "activity");
+    createGauge("#gauge-trend", "trend");
+
+    // Hover popover beside each gauge, so both the activity and trend scales can
+    // be understood on their own. Content follows the selected location and shows
+    // the actual threshold values at show time.
+    if (typeof attachLegendInfo === "function") {
+        const actHint = d3.select("#activity-info-hint");
+        if (!actHint.empty() && typeof sidebarActivityInfoHtml === "function") {
+            attachLegendInfo(actHint, sidebarActivityInfoHtml);
+        }
+        const trendHint = d3.select("#trend-info-hint");
+        if (!trendHint.empty() && typeof sidebarTrendInfoHtml === "function") {
+            attachLegendInfo(trendHint, sidebarTrendInfoHtml);
+        }
     }
 }
 
 function createGauge(selector, type) {
     const svg = d3.select(selector)
-        .attr("width", GAUGE_WIDTH)
-        .attr("height", GAUGE_HEIGHT);
+        .attr("viewBox", `0 0 ${GAUGE_WIDTH} ${GAUGE_HEIGHT}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
 
     svg.selectAll("*").remove();
 
@@ -69,8 +88,8 @@ function createGauge(selector, type) {
             .attr("y", -Math.cos(midAngle) * labelR)
             .attr("text-anchor", "middle")
             .attr("dominant-baseline", "middle")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-            .attr("font-size", "9px")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
+            .attr("font-size", "12px")
             .attr("fill", "#777")
             .attr("font-weight", "500")
             .text(shortLabels[i]);
@@ -91,35 +110,16 @@ function createGauge(selector, type) {
 }
 
 function updateGauges() {
-    const tab = AppState.currentTab;
+    // The overview card always shows both summaries (activity + trend),
+    // independent of which layer the map is colored by, for the selected location.
+    const loc = getSidebarLocation();
+    d3.select("#activity-gauge-title").text(`Activity Level: ${loc.name}`);
+    d3.select("#trend-gauge-title").text(`Trend Forecast: ${loc.name}`);
 
-    if (tab === "admissions") {
-        // Hide gauge and bar chart, show admissions distribution
-        d3.select("#active-gauge-wrapper").style("display", "none");
-        d3.select("#us-bar-chart").style("display", "none");
-        d3.select("#overview-info-hint").style("display", "none");
-        d3.select("#admissions-dist").style("display", "block");
-        updateAdmissionsDist();
-    } else {
-        // Show gauge and bar chart, hide admissions distribution
-        d3.select("#active-gauge-wrapper").style("display", "block");
-        d3.select("#us-bar-chart").style("display", "block");
-        d3.select("#overview-info-hint").style("display", "");
-        d3.select("#admissions-dist").style("display", "none");
-
-        const gaugeType = tab === "activity" ? "activity" : "trend";
-        const title = tab === "activity" ? "Activity Level: United States" : "Trend Forecast: United States";
-
-        // Recreate gauge if type changed
-        if (_currentGaugeType !== gaugeType) {
-            createGauge("#gauge-active", gaugeType);
-            _currentGaugeType = gaugeType;
-        }
-
-        d3.select("#active-gauge-title").text(title);
-        updateSingleGauge("#gauge-active", gaugeType);
-        updateUSBarChart();
-    }
+    updateSingleGauge("#gauge-activity", "activity");
+    updateSingleGauge("#gauge-trend", "trend");
+    updateUSBarChart("activity", "#activity-bar-chart");
+    updateUSBarChart("trend", "#trend-bar-chart");
 
     updateOverviewText();
 }
@@ -127,7 +127,8 @@ function updateGauges() {
 function updateSingleGauge(selector, type) {
     const refDate = AppState.currentRefDate;
     const horizon = AppState.currentHorizon;
-    const entry = dashboardData.data[refDate]?.["US"]?.[String(horizon)];
+    const fips = AppState.selectedState || "US";
+    const entry = getActiveDashboardData().data[refDate]?.[fips]?.[String(horizon)];
     if (!entry) return;
 
     const categories = type === "trend" ? TREND_ORDER : ACTIVITY_ORDER;
@@ -167,19 +168,16 @@ function updateSingleGauge(selector, type) {
 
 // --- NYT-style horizontal bar chart for US probabilities ---
 
-function updateUSBarChart() {
-    const container = d3.select("#us-bar-chart");
+function updateUSBarChart(type, containerSel) {
+    const container = d3.select(containerSel);
     container.selectAll("*").remove();
-
-    const tab = AppState.currentTab;
-    if (tab === "admissions") return;
 
     const refDate = AppState.currentRefDate;
     const horizon = AppState.currentHorizon;
-    const entry = dashboardData.data[refDate]?.["US"]?.[String(horizon)];
+    const fips = AppState.selectedState || "US";
+    const entry = getActiveDashboardData().data[refDate]?.[fips]?.[String(horizon)];
     if (!entry) return;
 
-    const type = tab === "activity" ? "activity" : "trend";
     let probs;
     if (type === "trend") {
         probs = entry.trend_probs;
@@ -201,35 +199,25 @@ function updateUSBarChart() {
         if (estimate === "most_likely") raw = entry.median_value;
         else if (estimate === "lower") raw = entry.p10_value;
         else raw = entry.p90_value;
-        selectedCat = classifyActivity(raw, "US") || entry.activity_most_likely;
+        selectedCat = classifyActivity(raw, fips) || entry.activity_most_likely;
     }
 
-    const chartW = 320;
-    const rowH = 28;
-    const labelW = 100;
-    const barMaxW = 170;
-    const pctW = 50;
-    const chartH = order.length * rowH + 8;
+    const chartW = 258;
+    const rowH = 40;
+    const labelW = 84;
+    const barMaxW = 118;
+    const pctW = 44;
+    const chartH = order.length * rowH + 4;
 
     const svg = container.append("svg")
-        .attr("width", chartW)
-        .attr("height", chartH)
+        .attr("viewBox", `0 0 ${chartW} ${chartH}`)
+        .attr("preserveAspectRatio", "xMinYMid meet")
+        .style("width", "100%")
+        .style("height", "auto")
         .style("overflow", "visible");
 
-    // Title
-    svg.append("text")
-        .attr("x", 0)
-        .attr("y", 10)
-        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-        .attr("font-size", "10px")
-        .attr("font-weight", "600")
-        .attr("text-transform", "uppercase")
-        .attr("letter-spacing", "0.5px")
-        .attr("fill", "#999")
-        .text("UNCERTAINTY DISTRIBUTION");
-
     order.forEach((cat, i) => {
-        const y = i * rowH + 22;
+        const y = i * rowH + 4;
         const prob = probs[cat] || 0;
         const pctText = prob < 0.01 ? (prob > 0 ? "<1%" : "0%") : `${Math.round(prob * 100)}%`;
         const barW = Math.max(0, prob * barMaxW);
@@ -242,8 +230,8 @@ function updateUSBarChart() {
             .attr("y", y + rowH / 2 - 2)
             .attr("text-anchor", "end")
             .attr("dominant-baseline", "central")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-            .attr("font-size", "12px")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
+            .attr("font-size", "13px")
             .attr("fill", "#666")
             .attr("font-weight", "400")
             .text(labels[cat]);
@@ -266,195 +254,12 @@ function updateUSBarChart() {
             .attr("x", labelW + barW + 6)
             .attr("y", y + rowH / 2 - 2)
             .attr("dominant-baseline", "central")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-            .attr("font-size", "12px")
+            .attr("font-family", "Libre Franklin, Helvetica Neue, Arial, sans-serif")
+            .attr("font-size", "13px")
             .attr("fill", "#333")
             .attr("font-weight", "600")
             .text(pctText);
     });
-}
-
-// --- Admissions tab: trajectory distribution histogram ---
-
-function updateAdmissionsDist() {
-    const container = d3.select("#admissions-dist");
-    container.selectAll("*").remove();
-
-    const refDate = AppState.currentRefDate;
-    const horizon = AppState.currentHorizon;
-
-    const dd = getActiveDashboardData();
-    const forecastEntry = dd.data[refDate]?.["US"]?.[String(horizon)];
-    if (!forecastEntry) return;
-
-    const forecastDate = forecastEntry.forecast_date;
-    const isPerCap = AppState.admissionsRate === "percapita";
-    const pop = fipsToPopulation["US"];
-    const toVal = v => (isPerCap && pop) ? v / pop * 100000 : v;
-    const fmt = isPerCap ? d3.format(",.1f") : d3.format(",.0f");
-    const fmtK = v => {
-        if (!isPerCap && v >= 1000) return d3.format(",.0f")(v / 1000) + "k";
-        return fmt(v);
-    };
-
-    // Compute forecast week date range for title
-    const fcDt = new Date(forecastDate + "T00:00:00");
-    const weekStart = new Date(fcDt);
-    weekStart.setDate(weekStart.getDate() - 6);
-    const monthsFmt = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const weekLabel = `${monthsFmt[weekStart.getMonth()]} ${weekStart.getDate()}, ${weekStart.getFullYear()} to ${monthsFmt[fcDt.getMonth()]} ${fcDt.getDate()}, ${fcDt.getFullYear()}`;
-    const unitLabel = isPerCap ? "per 100k" : "";
-
-    // Get quantile data from active trajectory data
-    const activeTraj = getActiveUsTrajData();
-    let quantileRow = null;
-    if (activeTraj?.data?.[refDate]) {
-        const rdData = activeTraj.data[refDate];
-        const dateIdx = rdData.dates.indexOf(forecastDate);
-        if (dateIdx >= 0) {
-            quantileRow = {};
-            for (const [key, vals] of Object.entries(rdData.quantiles)) {
-                quantileRow[key] = vals[dateIdx];
-            }
-        }
-    }
-
-    if (!quantileRow) return;
-
-    // Build sorted quantile points for CDF interpolation
-    const quantileDefs = [
-        { p: 0.025, key: "p025" }, { p: 0.05, key: "p05" },
-        { p: 0.10, key: "p10" }, { p: 0.25, key: "p25" },
-        { p: 0.50, key: "p50" }, { p: 0.75, key: "p75" },
-        { p: 0.90, key: "p90" }, { p: 0.95, key: "p95" },
-        { p: 0.975, key: "p975" }
-    ];
-
-    const qPoints = quantileDefs
-        .filter(q => quantileRow[q.key] != null)
-        .map(q => ({ p: q.p, value: toVal(quantileRow[q.key]) }));
-
-    if (qPoints.length < 2) return;
-
-    // Interpolate CDF: given a value, return the approximate cumulative probability
-    function interpCDF(val) {
-        if (val <= qPoints[0].value) return qPoints[0].p;
-        if (val >= qPoints[qPoints.length - 1].value) return qPoints[qPoints.length - 1].p;
-        for (let i = 0; i < qPoints.length - 1; i++) {
-            if (val >= qPoints[i].value && val <= qPoints[i + 1].value) {
-                const t = (val - qPoints[i].value) / (qPoints[i + 1].value - qPoints[i].value);
-                return qPoints[i].p + t * (qPoints[i + 1].p - qPoints[i].p);
-            }
-        }
-        return 0.5;
-    }
-
-    // Create bins: divide the range into 6 equal-width bins
-    const minVal = qPoints[0].value;
-    const maxVal = qPoints[qPoints.length - 1].value;
-    const range = maxVal - minVal;
-    const nBins = 6;
-    const binWidth = range / nBins;
-
-    const bins = [];
-    for (let i = 0; i < nBins; i++) {
-        const lo = minVal + i * binWidth;
-        const hi = minVal + (i + 1) * binWidth;
-        const pLo = interpCDF(lo);
-        const pHi = interpCDF(hi);
-        const prob = pHi - pLo;
-        bins.push({ lo, hi, prob });
-    }
-
-    const medianVal = toVal(quantileRow.p50);
-
-    // Chart dimensions
-    const chartW = 320;
-    const margin = { top: 38, right: 10, bottom: 32, left: 10 };
-    const barH = 30;
-    const barGap = 3;
-    const innerH = nBins * (barH + barGap);
-    const chartH = margin.top + innerH + margin.bottom;
-
-    const svg = container.append("svg")
-        .attr("width", chartW)
-        .attr("height", chartH)
-        .style("overflow", "visible");
-
-    // Title
-    svg.append("text")
-        .attr("x", 0)
-        .attr("y", 10)
-        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-        .attr("font-size", "10px")
-        .attr("font-weight", "600")
-        .attr("fill", "#555")
-        .text(`Weekly Hospitalizations Forecast: United States (${AppState.ensembleModel === "lop" ? "LOP" : "Median"} Ensemble)`);
-
-    svg.append("text")
-        .attr("x", 0)
-        .attr("y", 23)
-        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-        .attr("font-size", "9px")
-        .attr("font-weight", "400")
-        .attr("fill", "#888")
-        .text(`Week of ${weekLabel}` + (unitLabel ? ` (${unitLabel})` : ""));
-
-    const maxProb = d3.max(bins, d => d.prob) || 0.01;
-    const barMaxW = chartW - margin.left - margin.right - 80; // leave room for labels
-
-    const g = svg.append("g")
-        .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-    bins.forEach((bin, i) => {
-        const y = i * (barH + barGap);
-        const barW = Math.max(1, (bin.prob / maxProb) * barMaxW);
-        const pct = Math.round(bin.prob * 100);
-        const pctText = pct < 1 ? (bin.prob > 0 ? "<1%" : "0%") : `${pct}%`;
-
-        // Bar
-        g.append("rect")
-            .attr("x", 0)
-            .attr("y", y)
-            .attr("width", barW)
-            .attr("height", barH)
-            .attr("fill", "#6faed0")
-            .attr("opacity", 0.6)
-            .attr("rx", 2);
-
-        // Bin range label
-        g.append("text")
-            .attr("x", barW + 4)
-            .attr("y", y + barH / 2)
-            .attr("dominant-baseline", "central")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-            .attr("font-size", "10px")
-            .attr("fill", "#666")
-            .text(`${fmtK(bin.lo)}–${fmtK(bin.hi)}`);
-
-        // Probability label
-        g.append("text")
-            .attr("x", chartW - margin.left - margin.right)
-            .attr("y", y + barH / 2)
-            .attr("text-anchor", "end")
-            .attr("dominant-baseline", "central")
-            .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-            .attr("font-size", "11px")
-            .attr("fill", "#333")
-            .attr("font-weight", "500")
-            .text(pctText);
-    });
-
-    // Median annotation
-    g.append("text")
-        .attr("x", 0)
-        .attr("y", innerH + 14)
-        .attr("font-family", "Helvetica Neue, Arial, sans-serif")
-        .attr("font-size", "10px")
-        .attr("fill", "#555")
-        .html(`Median forecast: <tspan font-weight="700">${fmtK(medianVal)}</tspan>`);
-
 }
 
 // --- Enhanced overview text ---
@@ -475,23 +280,27 @@ function updateOverviewText() {
     const targetSun = new Date(targetSat);
     targetSun.setDate(targetSun.getDate() - 6);
 
+    // The overview card follows the selected location (US by default).
+    const loc = getSidebarLocation();
+
     // Update forecast context title
     const titleEl = d3.select("#forecast-context-title");
     const horizonText = `Wk ${horizon + 1}`;
-    titleEl.html(`National Forecast: Week of ${formatShortDate(targetSun)}\u2013${formatShortDate(targetSat)}<span class="forecast-week-range">${horizonText}</span>`);
+    const titleLabel = loc.fips === "US" ? "National Forecast" : loc.name;
+    titleEl.html(`${titleLabel}: Week of ${formatShortDate(targetSun)}\u2013${formatShortDate(targetSat)}<span class="forecast-week-range">${horizonText}</span>`);
 
-    // Overview: narrative summary for US with colored categories
-    const usEntry = horizonData["US"]?.[String(horizon)];
-    if (usEntry) {
-        const trendCat = usEntry.trend_most_likely;
-        const actCat = classifyActivity(usEntry.median_value, "US") || usEntry.activity_most_likely;
-        const hospVal = d3.format(",")(Math.round(usEntry.median_value));
+    // Overview: narrative summary for the selected location with colored categories
+    const selEntry = horizonData[loc.fips]?.[String(horizon)];
+    if (selEntry) {
+        const trendCat = selEntry.trend_most_likely;
+        const actCat = classifyActivity(selEntry.median_value, loc.fips) || selEntry.activity_most_likely;
+        const hospVal = d3.format(",")(Math.round(selEntry.median_value));
 
         const actColor = ACTIVITY_TEXT_COLORS[actCat] || ACTIVITY_COLORS[actCat];
         const trendColor = TREND_TEXT_COLORS[trendCat] || TREND_COLORS[trendCat];
 
-        const trendProb = Math.round((usEntry.trend_probs[trendCat] || 0) * 100);
-        const actProb = Math.round((usEntry.activity_probs[actCat] || 0) * 100);
+        const trendProb = Math.round((selEntry.trend_probs[trendCat] || 0) * 100);
+        const actProb = Math.round((selEntry.activity_probs[actCat] || 0) * 100);
 
         // Trend adverb + direction
         const TREND_ADVERBS = {
@@ -514,8 +323,9 @@ function updateOverviewText() {
         compSun.setDate(compSun.getDate() - 6);
         const compWeekStr = `the week of ${formatShortDate(compSun)}\u2013${formatShortDate(compSat)}`;
 
+        const leadIn = loc.fips === "US" ? "Nationally," : `In ${loc.name},`;
         d3.select("#overview-primary").html(
-            `Nationally, hospitalizations are forecasted to be at ` +
+            `${leadIn} hospitalizations are forecasted to be at ` +
             `<strong style="color:${actColor}">${ACTIVITY_LABELS[actCat].toLowerCase()}</strong> ` +
             `activity <span class="overview-pct">(${actProb}% chance)</span>, ` +
             `with an estimated <strong>${hospVal}</strong> new weekly hospital admissions. ` +
@@ -569,17 +379,18 @@ function updateOverviewText() {
     } else if (tab === "admissions") {
         const isPerCap = AppState.admissionsRate === "percapita";
         const estimate = AppState.currentEstimate;
-        if (usEntry) {
+        if (selEntry) {
             let raw;
-            if (estimate === "most_likely") raw = usEntry.median_value;
-            else if (estimate === "lower") raw = usEntry.p10_value;
-            else raw = usEntry.p90_value;
+            if (estimate === "most_likely") raw = selEntry.median_value;
+            else if (estimate === "lower") raw = selEntry.p10_value;
+            else raw = selEntry.p90_value;
             const fmt = isPerCap ? d3.format(",.1f") : d3.format(",.0f");
-            const pop = fipsToPopulation["US"];
+            const pop = fipsToPopulation[loc.fips];
             const val = isPerCap && pop ? raw / pop * 100000 : raw;
             const unit = isPerCap ? "per 100k" : "hospitalizations";
+            const where = loc.fips === "US" ? "nationally" : `in ${loc.name}`;
             para2 = `For the week of ${dateStr} ${horizonLabel}, ` +
-                `an estimated <strong>${fmt(val)}</strong> ${unit} nationally.`;
+                `an estimated <strong>${fmt(val)}</strong> ${unit} ${where}.`;
         }
     }
 

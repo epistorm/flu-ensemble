@@ -242,8 +242,9 @@ function jumpToMostRecent() {
     if (seasonSel) seasonSel.value = AppState.currentSeason;
 
     // Reset UI controls
-    d3.selectAll(".tab").classed("active", false);
-    d3.select('.tab[data-tab="activity"]').classed("active", true);
+    d3.selectAll(".mapview-seg").classed("active", false);
+    d3.select('.mapview-seg[data-tab="activity"]').classed("active", true);
+    if (typeof updateGaugeViewHighlight === "function") updateGaugeViewHighlight();
     d3.selectAll(".estimate-seg").classed("active", false);
     d3.select('.estimate-seg[data-estimate="most_likely"]').classed("active", true);
     d3.selectAll(".rate-btn").classed("active", false);

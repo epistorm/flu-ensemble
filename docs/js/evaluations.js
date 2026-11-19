@@ -29,7 +29,7 @@ const EVAL_BOX_W = 540;
 const EVAL_BOX_H = 440;
 const EVAL_COV_W = 440;
 const EVAL_COV_H = 470;
-const EVAL_FONT = "Helvetica Neue, Arial, sans-serif";
+const EVAL_FONT = "Libre Franklin, Helvetica Neue, Arial, sans-serif";
 
 // Color palette for models (deterministic, assigned at init)
 const MODEL_COLORS = {};

@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About — Influenza Hospitalization Forecast</title>
-    <link rel="stylesheet" href="css/style.css?v=17">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/style.css?v=34">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
         window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] } };
@@ -15,10 +18,10 @@
             max-width: 920px;
             margin: 0 auto;
             padding: 40px 24px 80px;
-            font-family: "Helvetica Neue", Arial, sans-serif;
+            font-family: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
             color: #333;
             line-height: 1.7;
-            background: #f7f7f7;
+            background: transparent;
         }
         .about-page h2 {
             font-size: 22px;
@@ -68,6 +71,130 @@
         .model-table tr:hover {
             background: #f8f9fa;
         }
+        /* --- Interactive activity/trend explainers --- */
+        .exp-controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 10px 0 12px; font-family: "Libre Franklin", "Helvetica Neue", Arial, sans-serif; font-size: 13px; }
+        .exp-controls .rng { flex: 1 1 280px; min-width: 240px; }
+        .exp-controls .rng label { display: flex; justify-content: space-between; font-weight: 600; color: #333; margin-bottom: 2px; }
+        .exp-controls .rng output { color: #16606e; font-weight: 700; }
+        .exp-controls input[type=range] { width: 100%; accent-color: #1f7a8c; }
+        .exp-seg-label { font-weight: 600; color: #333; margin-right: 6px; }
+        .exp-seg { display: inline-flex; border: 1px solid #1f7a8c; border-radius: 5px; overflow: hidden; vertical-align: middle; }
+        .exp-seg button { font: 500 12.5px "Libre Franklin", "Helvetica Neue", Arial, sans-serif; padding: 5px 11px; border: none; border-right: 1px solid #1f7a8c; background: #fff; color: #1f7a8c; cursor: pointer; }
+        .exp-seg button:last-child { border-right: none; }
+        .exp-seg button.active { background: #1f7a8c; color: #fff; }
+        .exp-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+        @media (max-width: 760px) { .exp-grid { grid-template-columns: 1fr; } }
+        .exp-gauge svg { width: 100%; max-width: 230px; display: block; margin: 0 auto; height: auto; }
+        .exp-read { text-align: center; font-size: 14px; margin: 2px 0 8px; font-family: "Libre Franklin", "Helvetica Neue", Arial, sans-serif; }
+        .exp-bars { max-width: 320px; margin: 0 auto; font-family: "Libre Franklin", "Helvetica Neue", Arial, sans-serif; }
+        .exp-bar { display: grid; grid-template-columns: 96px 1fr 36px; gap: 8px; align-items: center; font-size: 12.5px; margin: 3px 0; }
+        .exp-bar.is-top { font-weight: 700; }
+        /* Ensemble explainer: alignment slider + per-panel captions */
+        .ens-title { font-size: 14px; font-weight: 700; color: #10202f; margin: 0 0 14px; }
+        .wis-row { display: flex; gap: 14px; align-items: flex-start; }
+        .wis-row > svg { flex: 1 1 0; min-width: 0; height: auto; aspect-ratio: 300 / 230; }
+        @media (max-width: 720px) { .wis-row { flex-direction: column; } .wis-row > svg { flex: 0 0 auto; width: 100%; } }
+        .cov-play-btn { font: 600 12px "Libre Franklin", "Helvetica Neue", Arial, sans-serif; padding: 6px 13px; border: 1px solid #1f7a8c; border-radius: 6px; background: #fff; color: #16606e; cursor: pointer; }
+        .cov-play-btn:hover { background: #eef5f6; }
+        .cov-row { display: flex; gap: 18px; align-items: flex-start; }
+        .cov-row > svg { flex: 1 1 0; min-width: 0; height: auto; aspect-ratio: 320 / 250; }
+        .cov-captions { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 10px; }
+        .cov-captions p { font-size: 12px; line-height: 1.45; color: #555; margin: 0; text-align: center; }
+        .cov-captions strong { color: #10202f; }
+        @media (max-width: 620px) { .cov-row { flex-direction: column; } .cov-row > svg { flex: 0 0 auto; width: 100%; } .cov-captions { grid-template-columns: 1fr; } }
+        .ens-slider { display: flex; align-items: center; gap: 10px; }
+        .ens-slider input[type=range] { flex: 1; min-width: 160px; accent-color: #1f7a8c; }
+        .ens-end { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: #16606e; text-transform: uppercase; }
+        .ens-captions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 8px; }
+        .ens-captions p { font-size: 12px; line-height: 1.45; color: #555; margin: 0; }
+        .ens-captions strong { color: #10202f; }
+        @media (max-width: 760px) { .ens-captions { grid-template-columns: 1fr; } }
+        .exp-bar-track { background: #edf1f5; height: 11px; border-radius: 3px; overflow: hidden; }
+        .exp-bar-fill { display: block; height: 100%; }
+        /* --- Pinned table of contents (underline tabs) --- */
+        .about-toc {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0 4px;
+            margin: 0 0 4px;
+            padding: 0 0 1px;
+            background: #eef4f5;
+            border-bottom: 1px solid #d7e2e4;
+        }
+        .about-toc a {
+            position: relative;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7a80;
+            text-decoration: none;
+            padding: 13px 10px 12px;
+            transition: color 0.12s ease;
+            white-space: nowrap;
+        }
+        .about-toc a:first-child { padding-left: 0; }
+        .about-toc a:first-child.active::after { left: 0; }
+        .about-toc a:hover { color: var(--accent-dark); }
+        .about-toc a.active { color: var(--accent-dark); }
+        .about-toc a.active::after {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: -1px;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+        }
+        @media (max-width: 620px) {
+            .about-toc { gap: 0 2px; }
+            .about-toc a { padding: 11px 7px 10px; font-size: 12px; }
+            .about-toc a.active::after { left: 7px; right: 7px; }
+            .about-toc a:first-child { padding-left: 0; }
+        }
+
+        /* --- Collapsible sections (highlighted cards) --- */
+        .about-section {
+            background: #fff;
+            border: 1px solid #d3e4e8;
+            border-left: 5px solid var(--accent);
+            border-radius: 10px;
+            margin: 0 0 16px;
+            padding: 0 22px;
+            box-shadow: 0 1px 5px rgba(22, 96, 110, 0.08);
+            scroll-margin-top: 78px;
+        }
+        .about-section[open] { padding-bottom: 22px; }
+        .about-section > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 0 14px;
+        }
+        .about-section[open] > summary {
+            border-bottom: 1px solid var(--accent-soft);
+            margin-bottom: 14px;
+        }
+        .about-section > summary::-webkit-details-marker { display: none; }
+        .about-section > summary h2 { margin: 0; flex: 1; color: var(--accent-dark); }
+        .about-section > summary:hover h2 { color: #0e4650; }
+        .about-section > summary::after {
+            content: "";
+            flex: none;
+            width: 10px;
+            height: 10px;
+            margin-bottom: 4px;
+            border-right: 2.5px solid #1f7a8c;
+            border-bottom: 2.5px solid #1f7a8c;
+            transform: rotate(45deg);
+            transition: transform 0.2s ease;
+        }
+        .about-section[open] > summary::after { transform: rotate(-135deg); }
     </style>
 </head>
 <body>
@@ -89,11 +216,22 @@
     </header>
 
     <div class="about-page">
-        <h2>Overview</h2>
-        <p>The Epistorm Ensemble produces weekly probabilistic forecasts of influenza hospital admissions for all 50 US states, Washington DC, and the US nationally. Forecasts are generated each week for horizons of 1 to 4 weeks ahead and submitted to the CDC's <a href="https://github.com/cdcepi/FluSight-forecast-hub" target="_blank">FluSight Forecast Hub</a>.</p>
-        <p>This dashboard provides an interactive view of the ensemble's forecasts along with evaluation metrics that compare performance against a baseline model and other contributing forecasters.</p>
+        <nav class="about-toc" aria-label="Contents">
+            <a href="#sec-overview">Overview</a>
+            <a href="#sec-models">Contributing Models</a>
+            <a href="#sec-methods">Ensemble Methods</a>
+            <a href="#sec-outputs">Forecast Outputs</a>
+            <a href="#sec-evaluation">Evaluation Methods</a>
+        </nav>
 
-        <h2>Contributing Models</h2>
+        <details class="about-section" id="sec-overview" open>
+        <summary><h2>Overview</h2></summary>
+        <p>The Epistorm Ensemble produces weekly probabilistic forecasts of influenza hospital admissions for all 50 US states, Washington DC, and the US nationally. Forecasts are generated each week for horizons of 1 to 4 weeks ahead and submitted to the CDC's <a href="https://github.com/cdcepi/FluSight-forecast-hub" target="_blank">FluSight Forecast Hub</a>. This dashboard provides an interactive view of those forecasts along with evaluation metrics that compare performance against a baseline model and other contributing forecasters.</p>
+        <p>The forecasts are built from individual model submissions to the <a href="https://github.com/cdcepi/FluSight-forecast-hub" target="_blank">FluSight Forecast Hub</a>, and the observed admissions shown alongside them come from the FluSight target data (NHSN). Everything is refreshed automatically each Thursday: the pipeline fetches the latest model submissions, builds the ensemble forecasts, computes evaluation scores, and redeploys this dashboard.</p>
+        </details>
+
+        <details class="about-section" id="sec-models" open>
+        <summary><h2>Contributing Models</h2></summary>
         <p>The ensemble combines quantile forecasts from the individual models submitted to the CDC FluSight hub. Because the dashboard now includes past seasons, the full set spans more models than any single season: membership has grown from 4 models in 2023-24 to 7 in 2024-25, 10 in 2025-26, and 12 in 2026-27, and each week's ensemble uses whichever models submitted that week. The table below lists every contributing model and the seasons in which it participated.</p>
         <table class="model-table">
             <thead>
@@ -121,8 +259,10 @@
             </tbody>
         </table>
         <p>The CDC's <strong>FluSight-baseline</strong> model is used as a reference for scoring but is not included in the ensemble. The <strong>FluSight-ensemble</strong> (CDC's own ensemble) is also tracked for comparison.</p>
+        </details>
 
-        <h2>Ensemble Methods</h2>
+        <details class="about-section" id="sec-methods" open>
+        <summary><h2>Ensemble Methods</h2></summary>
         <p>Two ensemble methods are available on the dashboard:</p>
 
         <h3>Median Ensemble</h3>
@@ -131,37 +271,74 @@
         <h3>Linear Opinion Pool (LOP) Ensemble</h3>
         <p>The LOP method (<a href="https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-32/issue-4/The-Opinion-Pool/10.1214/aoms/1177704873.full" target="_blank">Stone, 1961</a>; <a href="https://royalsocietypublishing.org/rsif/article/20/198/20220659/90292/Context-dependent-representation-of-within-and" target="_blank">Howerton et al., 2023</a>) combines the full cumulative distribution functions (CDFs) of each model rather than individual quantiles. For a given value, each model's CDF is evaluated and the results are averaged, producing a blended probability distribution. This approach better captures multi-modal uncertainty and model disagreement.</p>
 
-        <p>Both methods produce forecasts at 23 quantile levels (0.01 to 0.99), which are used to derive prediction intervals, trend categories, and activity level classifications. The figure below illustrates how each method combines six example model distributions (colored lines) into a single ensemble forecast (blue).</p>
+        <p>Both methods produce forecasts at 23 quantile levels (0.01 to 0.99), which are used to derive prediction intervals, trend categories, and activity levels. The explainer below walks through the three steps &mdash; the member models, how they are combined at the final forecast week, and the resulting ensemble &mdash; with the <strong>median</strong> and <strong>LOP</strong> ensembles drawn together so they can be compared directly. Drag <strong>model alignment</strong> to see how each one responds.</p>
 
-        <div style="background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:20px;margin:20px 0">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;font-family:Helvetica Neue,Arial,sans-serif;flex-wrap:wrap">
-                <span style="font-size:12px;font-weight:600;color:#555">Method:</span>
-                <button class="ens-toggle-btn active" id="toggle-median-btn" style="font-family:Helvetica Neue,Arial,sans-serif;font-size:12px;padding:5px 16px;border:1px solid #ccc;border-radius:4px;background:#2C5F8A;color:#fff;cursor:pointer">Median</button>
-                <button class="ens-toggle-btn" id="toggle-lop-btn" style="font-family:Helvetica Neue,Arial,sans-serif;font-size:12px;padding:5px 16px;border:1px solid #ccc;border-radius:4px;background:#f7f7f7;color:#555;cursor:pointer">LOP</button>
+        <div style="background:#f5f8f9;border:1px solid #dde7ea;border-radius:8px;padding:18px 20px 16px;margin:14px 0 20px">
+            <div class="ens-title">Building the ensemble</div>
+            <div class="exp-controls">
+                <div class="rng">
+                    <label for="ens-align">Model alignment</label>
+                    <div class="ens-slider"><span class="ens-end">Low</span><input type="range" id="ens-align" min="0" max="100" step="1" value="60"><span class="ens-end">High</span></div>
+                </div>
             </div>
-            <div style="display:flex;gap:0">
-                <svg id="ens-fan" viewBox="0 0 540 300" style="flex:1"></svg>
-                <svg id="ens-cdf" viewBox="0 0 340 300" style="width:340px"></svg>
+            <svg id="ens-fig" viewBox="0 0 1000 400" style="width:100%;height:auto"></svg>
+            <div class="ens-captions">
+                <p id="ens-cap-1"></p>
+                <p id="ens-cap-2"></p>
+                <p id="ens-cap-3"></p>
             </div>
         </div>
+        </details>
 
-        <h2>Forecast Outputs</h2>
+        <details class="about-section" id="sec-outputs" open>
+        <summary><h2>Forecast Outputs</h2></summary>
         <h3>Quantile Forecasts</h3>
         <p>The primary output is a set of quantile predictions for weekly influenza hospital admissions. These are visualized as fan charts on the dashboard, showing the median forecast along with 50% and 95% prediction intervals.</p>
 
         <h3>Trend Categories</h3>
-        <p>Trend forecasts classify the expected change in hospitalizations into five categories: <em>large decrease</em>, <em>decrease</em>, <em>stable</em>, <em>increase</em>, and <em>large increase</em>. These are derived from the quantile forecasts by computing the probability that the change relative to the most recent observation falls within horizon-specific thresholds based on per-capita rates.</p>
+        <p>Trend forecasts classify the expected change in hospitalizations into five categories: <em>large decrease</em>, <em>decrease</em>, <em>stable</em>, <em>increase</em>, and <em>large increase</em>. These are derived from the quantile forecasts by computing the probability that the change relative to the most recent observation falls within horizon-specific thresholds based on per-capita rates. This categorical-trend framework and its horizon-specific thresholds follow the approach of <a href="https://academic.oup.com/ofid/article/12/8/ofaf460/8221234" target="_blank">Mathis et al., 2025</a>, and a multi-season evaluation of these trend forecasts is presented in <a href="https://www.medrxiv.org/content/10.64898/2026.08.31.26361843v1" target="_blank">Davis et al., 2026</a>.</p>
+        <div style="background:#f5f8f9;border:1px solid #dde7ea;border-radius:8px;padding:18px 20px 14px;margin:14px 0 20px">
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13.5px;font-weight:600;color:#10202f;margin:0 0 2px">How trend probabilities are read from the forecast</p>
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.45;color:#555;margin:0 0 4px">The forecast fan (median with 50% and 90% prediction intervals) is compared with the last reported week. Bands measured from that week &mdash; <strong>stable</strong>, increase/decrease, and <strong>large</strong> &mdash; mark how big the change is; their boundaries come from the per-100,000 rate change and widen further ahead (a floor keeps changes under ~10 admissions Stable). For the selected week, the share of the forecast in each band is the probability of that trend; exact bounds for a state appear on the dashboard hover. <em>Drag the forecast, spread, or week to explore.</em></p>
+            <div class="exp-controls">
+                <div class="rng"><label for="trend-mid">Forecast 4 weeks ahead <output id="trend-mid-out"></output></label><input type="range" id="trend-mid" min="1000" max="22000" step="500" value="12000"></div>
+                <div><span class="exp-seg-label">Spread</span><span class="exp-seg" id="trend-spread"><button type="button" data-s="narrow">Narrow</button><button type="button" data-s="medium" class="active">Medium</button><button type="button" data-s="wide">Wide</button></span></div>
+                <div><span class="exp-seg-label">Week ahead</span><span class="exp-seg" id="trend-week"><button type="button" data-w="0">1</button><button type="button" data-w="1">2</button><button type="button" data-w="2">3</button><button type="button" data-w="3" class="active">4</button></span></div>
+            </div>
+            <div class="exp-grid">
+                <svg id="trend-band-fig" viewBox="0 0 560 300" style="width:100%;height:auto"></svg>
+                <div class="exp-side">
+                    <div class="exp-gauge"><svg id="trend-gauge" viewBox="0 0 230 128"></svg></div>
+                    <p class="exp-read" id="trend-read"></p>
+                    <div class="exp-bars" id="trend-bars"></div>
+                </div>
+            </div>
+        </div>
 
         <h3>Activity Levels</h3>
-        <p>Activity level forecasts classify the expected hospitalization level into four categories: <em>Low</em>, <em>Moderate</em>, <em>High</em>, and <em>Very High</em>. Thresholds are defined for each location using the moving epidemic method applied to historical influenza hospitalization data. Activity level probabilities are computed from the forecast CDF evaluated at each threshold.</p>
+        <p>Activity level forecasts classify the expected hospitalization level into four categories: <em>Low</em>, <em>Moderate</em>, <em>High</em>, and <em>Very High</em>. Thresholds are defined for each location using the moving epidemic method (<a href="https://onlinelibrary.wiley.com/doi/10.1111/j.1750-2659.2012.00422.x" target="_blank">Vega et al., 2013</a>) applied to historical influenza hospitalization data. Activity level probabilities are computed from the forecast CDF evaluated at each threshold.</p>
+        <div style="background:#f5f8f9;border:1px solid #dde7ea;border-radius:8px;padding:18px 20px 14px;margin:14px 0 20px">
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13.5px;font-weight:600;color:#10202f;margin:0 0 2px">How activity-level probabilities are read from the forecast</p>
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.45;color:#555;margin:0 0 4px">The forecast is shown as a fan &mdash; the median with its 50% and 90% prediction intervals, widening further ahead. A state's moving-epidemic-method thresholds (the real United States national values) split the admissions axis into the four activity bands. For the selected week, the share of the forecast that falls in each band is the probability of that level, and the gauge points to the most likely one. <em>Drag the forecast, spread, or week to see the intervals and chances shift.</em></p>
+            <div class="exp-controls">
+                <div class="rng"><label for="act-mid">Forecast 4 weeks ahead <output id="act-mid-out"></output></label><input type="range" id="act-mid" min="6000" max="44000" step="500" value="22000"></div>
+                <div><span class="exp-seg-label">Spread</span><span class="exp-seg" id="act-spread"><button type="button" data-s="narrow">Narrow</button><button type="button" data-s="medium" class="active">Medium</button><button type="button" data-s="wide">Wide</button></span></div>
+                <div><span class="exp-seg-label">Week ahead</span><span class="exp-seg" id="act-week"><button type="button" data-w="0">1</button><button type="button" data-w="1">2</button><button type="button" data-w="2">3</button><button type="button" data-w="3" class="active">4</button></span></div>
+            </div>
+            <div class="exp-grid">
+                <svg id="activity-band-fig" viewBox="0 0 560 300" style="width:100%;height:auto"></svg>
+                <div class="exp-side">
+                    <div class="exp-gauge"><svg id="activity-gauge" viewBox="0 0 230 128"></svg></div>
+                    <p class="exp-read" id="activity-read"></p>
+                    <div class="exp-bars" id="activity-bars"></div>
+                </div>
+            </div>
+        </div>
 
-        <h2>Data Sources</h2>
-        <ul>
-            <li><strong>Forecast data:</strong> Individual model submissions from the <a href="https://github.com/cdcepi/FluSight-forecast-hub" target="_blank">FluSight Forecast Hub</a></li>
-            <li><strong>Observed data:</strong> Weekly influenza hospital admissions from the FluSight target data (NHSN)</li>
-        </ul>
+        </details>
 
-        <h2>Evaluation Methods</h2>
+        <details class="about-section" id="sec-evaluation" open>
+        <summary><h2>Evaluation Methods</h2></summary>
 
         <h3>Weighted Interval Score (WIS)</h3>
         <p>The Weighted Interval Score (<a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008618" target="_blank">Bracher et al., 2021</a>) is a proper scoring rule for quantile forecasts that measures both <strong>sharpness</strong> (how narrow the prediction intervals are) and <strong>calibration</strong> (whether observations fall within the predicted intervals at the expected rate). Lower WIS indicates better forecast accuracy.</p>
@@ -169,19 +346,62 @@
         <p style="text-align:center">$\text{IS}_\alpha(l, u, y) = (u - l) + \frac{2}{\alpha}(l - y)\,\mathbf{1}\{y < l\} + \frac{2}{\alpha}(y - u)\,\mathbf{1}\{y > u\}$</p>
         <p>The first term rewards sharpness (narrower intervals), while the penalty terms penalize observations that fall outside the interval. The WIS aggregates this across $K = 11$ symmetric prediction intervals and the median forecast $m$:</p>
         <p style="text-align:center">$\text{WIS} = \frac{1}{K + \frac{1}{2}} \left[ \sum_{k=1}^{K} \frac{\alpha_k}{2} \cdot \text{IS}_{\alpha_k} + \frac{1}{2} \left| m - y \right| \right]$</p>
-        <p>The <strong>WIS ratio</strong> normalizes each model's score against the FluSight-baseline, computed as the ratio of mean scores: $\text{WIS Ratio} = \overline{\text{WIS}}_{\text{model}}\, / \,\overline{\text{WIS}}_{\text{baseline}}$. Values below 1.0 indicate the model outperforms the baseline.</p>
 
-        <div style="max-width:520px;margin:14px auto">
-            <svg id="wis-diagram" viewBox="0 0 380 130" style="width:100%;background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:8px"></svg>
+        <div style="background:#f5f8f9;border:1px solid #dde7ea;border-radius:8px;padding:18px 20px 16px;margin:14px 0 20px">
+            <div class="ens-title">Scoring a forecast with WIS</div>
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.45;color:#555;margin:0 0 8px">The <strong>WIS</strong> scores a probabilistic forecast against what actually happened, rewarding forecasts that are both <strong>sharp</strong> (narrow) and <strong>well-calibrated</strong> (the outcome stays inside the intervals). Lower is better. <em>Drag the outcome, or change the sharpness or week.</em></p>
+            <div class="exp-controls">
+                <div class="rng"><label for="wis-obs">Observed outcome <output id="wis-obs-out"></output></label><input type="range" id="wis-obs" min="0" max="28000" step="250" value="12000"></div>
+                <div><span class="exp-seg-label">Forecast sharpness</span><span class="exp-seg" id="wis-sharp"><button type="button" data-s="narrow">Sharp</button><button type="button" data-s="medium" class="active">Medium</button><button type="button" data-s="wide">Wide</button></span></div>
+                <div><span class="exp-seg-label">Week ahead</span><span class="exp-seg" id="wis-week"><button type="button" data-w="0">1</button><button type="button" data-w="1">2</button><button type="button" data-w="2">3</button><button type="button" data-w="3" class="active">4</button></span></div>
+            </div>
+            <div class="wis-row">
+                <svg id="wis-fig" viewBox="0 0 300 230"></svg>
+                <svg id="wis-contrib" viewBox="0 0 300 230"></svg>
+                <svg id="wis-decomp" viewBox="0 0 300 230"></svg>
+            </div>
+            <div class="ens-captions wis-captions">
+                <p>The forecast is a median wrapped in nested <strong>prediction intervals</strong> (50–95%). The <strong>outcome</strong> is what actually happened that week.</p>
+                <p>Each interval adds its <strong style="color:#1f7a8c">width</strong> plus a <strong>penalty</strong> if the outcome lands outside it. Inner intervals carry the largest weight, so they contribute most.</p>
+                <p>WIS is the <strong>weighted average</strong> of those interval scores (plus the median error), regrouped as <strong style="color:#1f7a8c">dispersion</strong> + <strong style="color:#e0a030">over&#8209;</strong> + <strong style="color:#d9704f">under&#8209;prediction</strong>.</p>
+            </div>
+            <p class="exp-read" id="wis-read" style="text-align:center;margin-top:12px"></p>
+        </div>
+
+        <p>WIS is an <strong>absolute</strong> score: its width and penalty terms are measured in the same units as the forecast, so its magnitude scales with the size of the values being predicted. Every model scores a far larger WIS near the winter peak than in the quiet shoulders of the season, which makes raw scores hard to compare across weeks or locations. To put them on a common footing we use <strong>relative WIS</strong> — each model's mean score divided by the FluSight-baseline's.</p>
+
+        <div style="background:#f5f8f9;border:1px solid #dde7ea;border-radius:8px;padding:18px 20px 16px;margin:14px 0 20px">
+            <div class="ens-title">Why we use relative WIS</div>
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.45;color:#555;margin:0 0 10px">WIS is measured in admissions, so its size depends on how big the numbers are, not just how good the forecast is. Dividing a model's WIS by the <strong>baseline's</strong> strips that out, giving a score you can compare across weeks and locations.</p>
+            <p style="text-align:center;margin:-2px 0 2px">$\text{relative WIS} = \textcolor{#1f7a8c}{\text{WIS}_{\text{model}}}\, / \,\textcolor{#bf8b30}{\text{WIS}_{\text{baseline}}}$</p>
+            <svg id="wis-ratio-fig" viewBox="0 0 800 282" style="width:100%;height:auto;aspect-ratio:800/282;display:block"></svg>
+            <div class="ens-captions" style="grid-template-columns:1fr 1fr 1fr">
+                <p>Across a season the <span style="color:#1f7a8c;font-weight:600">model</span> and the flat <span style="color:#bf8b30;font-weight:600">baseline</span> each issue a 4&#8209;week forecast. The baseline holds the last value flat; the model follows the recent trend.</p>
+                <p>Each forecast's actual <strong>WIS</strong> (bars) runs largest where <span style="color:#1a1a1a;font-weight:600">observed admissions</span> (black line) are biggest — the score tracks the magnitude of the data, so raw WIS can't be compared across weeks.</p>
+                <p><strong>Relative WIS</strong> divides the model's WIS by the baseline's, removing the magnitude. Below&nbsp;1 the model wins; above&nbsp;1 the baseline wins — as at the peak, where the model overshoots the turn.</p>
+            </div>
         </div>
 
         <h3>Prediction Interval Coverage</h3>
         <p>Coverage measures calibration — whether prediction intervals contain the observed value at the expected rate (<a href="https://www.pnas.org/doi/10.1073/pnas.2113561119" target="_blank">Cramer et al., 2022</a>). For a given interval level $(1-\alpha)$, coverage is simply the fraction of forecasts where the observation falls within the interval:</p>
         <p style="text-align:center">$\text{Coverage}_{1-\alpha} = \frac{1}{N} \sum_{i=1}^{N} \mathbf{1}\left\{ l_i^{(\alpha)} \leq y_i \leq u_i^{(\alpha)} \right\}$</p>
-        <p>A well-calibrated 50% prediction interval should contain roughly 50% of observations, and a 95% interval roughly 95%. Points above the diagonal indicate underconfident intervals (too wide); points below indicate overconfident intervals (too narrow).</p>
-
-        <div style="max-width:520px;margin:14px auto">
-            <svg id="cov-diagram" viewBox="0 0 380 150" style="width:100%;background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:8px"></svg>
+        <div style="background:#f5f8f9;border:1px solid #dde7ea;border-radius:8px;padding:18px 20px 16px;margin:14px 0 20px">
+            <div class="ens-title">Is the model well calibrated?</div>
+            <p style="font-family:'Libre Franklin','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.45;color:#555;margin:0 0 8px">Coverage asks whether the model's uncertainty is honest: does its <em>X</em>% prediction interval really contain the outcome about <em>X</em>% of the time? <em>Play a season to see the coverage averaged across every week's forecasts, or switch the model's confidence and highlight a different interval.</em></p>
+            <div class="exp-controls">
+                <div><span class="exp-seg-label">Model confidence</span><span class="exp-seg" id="cov-cal"><button type="button" data-s="0.6">Overconfident</button><button type="button" data-s="1.0" class="active">Well-calibrated</button><button type="button" data-s="1.6">Underconfident</button></span></div>
+                <div><span class="exp-seg-label">Highlight interval</span><span class="exp-seg" id="cov-lvl"><button type="button" data-l="50">50%</button><button type="button" data-l="80">80%</button><button type="button" data-l="90" class="active">90%</button><button type="button" data-l="95">95%</button></span></div>
+                <div><button type="button" id="cov-play" class="cov-play-btn">&#9654; Play a season</button></div>
+            </div>
+            <div class="cov-row">
+                <svg id="cov-fan" viewBox="0 0 320 250"></svg>
+                <svg id="cov-curve" viewBox="0 0 320 250"></svg>
+            </div>
+            <div class="cov-captions">
+                <p>A new data point arrives each week, and the model forecasts the weeks ahead (the shaded prediction intervals). The curve on the right tracks how often the outcomes land inside the highlighted interval across the season.</p>
+                <p>The coverage is <strong>averaged</strong> over every forecast made across the season, then plotted against the ideal. <strong>On</strong> the dashed line = calibrated; <strong>above</strong> = underconfident (intervals too wide); <strong>below</strong> = overconfident (too narrow).</p>
+            </div>
+            <p class="exp-read" id="cov-read" style="text-align:center;margin-top:10px"></p>
         </div>
 
         <h3>Evaluation Controls</h3>
@@ -192,8 +412,7 @@
             <li><strong>Location:</strong> Hover or click on states to see location-specific metrics</li>
         </ul>
 
-        <h2>Update Schedule</h2>
-        <p>Forecasts are updated automatically every Thursday. The pipeline fetches the latest model submissions, creates the ensemble forecasts, computes evaluation scores, and deploys the updated dashboard.</p>
+        </details>
     </div>
 
     <footer class="funding-footer">
@@ -204,424 +423,876 @@
         <p>This work is supported by CDC-RFA-FT-23-0069 from the CDC's Center for Forecasting and Outbreak Analytics.</p>
     </footer>
 <script>
+// ===== Interactive About-page explainers: ensemble generation, WIS, coverage =====
+(function () {
+    const F = "Libre Franklin, Helvetica Neue, Arial, sans-serif", ACCENT = "#1f7a8c", ACCENT_DK = "#16606e", INK = "#1a1a1a";
+    const GOOD = "#2a9d8f", BAD = "#d9704f", fmt = d3.format(","), sfmt = d3.format("~s");
+    const Z = { 50: 0.674, 55: 0.755, 60: 0.841, 65: 0.935, 70: 1.036, 75: 1.150, 80: 1.282, 85: 1.440, 90: 1.645, 95: 1.960 };
+    const ncdf = (v, mu, s) => { const z = (v - mu) / (s * Math.SQRT2); const t = 1 / (1 + 0.3275911 * Math.abs(z)); const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z); return 0.5 * (1 + (z >= 0 ? y : -y)); };
+    function invnorm(p) {
+        const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+        const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+        const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+        const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+        const pl = 0.02425, ph = 1 - pl; let q, r;
+        if (p < pl) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+        if (p <= ph) { q = p - 0.5; r = q * q; return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); }
+        q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+    }
+
+    // ---------- 1. Ensemble generation: individual models -> combining -> ensemble ----------
+    (function () {
+        const svg = d3.select("#ens-fig"); if (svg.empty()) return;
+        const slider = document.getElementById("ens-align");
+        const cap1 = document.getElementById("ens-cap-1"), cap2 = document.getElementById("ens-cap-2"), cap3 = document.getElementById("ens-cap-3");
+        const OBS = [2200, 2900, 3700, 4500, 5200, 6000], origin = OBS.length - 1; // same observed series as the activity/trend fans
+        const MCOLS = ["#8fd0e8", "#5bb3c9", "#3d8bb0", "#2f6f9e", "#5566a8", "#7a6fb0"];
+        const CENTRAL = 1500, OFFS = [-3, -1.5, -0.4, 0.9, 2.0, 3.2], SCALE = 850, baseSig = [1800, 1600, 1500, 1500, 1600, 1900], z90 = 1.645, yMax = 32000;
+        const MED = ACCENT, LOPC = "#d9704f";               // median = teal, LOP = coral
+        slider.addEventListener("input", draw);
+
+        function models() {
+            const dd = 1 - (+slider.value) / 100;           // high alignment -> small spread between models
+            return OFFS.map((o, i) => {
+                const slope = CENTRAL + o * dd * SCALE;     // central rise + a symmetric deviation that grows as alignment falls
+                return { col: MCOLS[i], mu: k => Math.max(0, OBS[origin] + slope * (k + 1)), sig: k => baseSig[i] * Math.sqrt(k + 1) };
+            });
+        }
+        function qEns(mdl, k, tau, method) {
+            if (method === "median") return d3.median(mdl.map(m => m.mu(k) + m.sig(k) * invnorm(tau)));
+            const cdf = xx => d3.mean(mdl, m => ncdf(xx, m.mu(k), m.sig(k)));
+            for (let xx = 0; xx <= 90000; xx += 150) if (cdf(xx) >= tau) return xx; return 90000;
+        }
+
+        function draw() {
+            svg.selectAll("*").remove();
+            const W = 1000, H = 400, gap = 58, pw = (W - 2 * gap) / 3, mdl = models();
+            const METHODS = [["median", MED], ["lop", LOPC]];
+
+            function timePanel(ox, title, kind) {
+                const m = { t: 22, r: 10, b: 42, l: 48 }, iw = pw - m.l - m.r, ih = H - m.t - m.b;
+                const g = svg.append("g").attr("transform", `translate(${ox + m.l},${m.t})`);
+                const x = d3.scaleLinear().domain([0, origin + 4]).range([0, iw]), y = d3.scaleLinear().domain([0, yMax]).range([ih, 0]);
+                g.append("text").attr("x", 0).attr("y", -8).attr("font-family", F).attr("font-size", "13px").attr("font-weight", 700).attr("fill", kind === "ensemble" ? ACCENT_DK : "#333").text(title);
+                const ya = g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(sfmt)); ya.selectAll("text").attr("font-family", F).attr("font-size", "11px").attr("fill", "#999"); ya.selectAll("line").attr("stroke", "#eee"); ya.select(".domain").attr("stroke", "#ccc");
+                g.append("text").attr("transform", "rotate(-90)").attr("x", -ih / 2).attr("y", -40).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#aaa").text("Weekly admissions");
+                // observed (up to the last reported week only)
+                g.append("path").datum(OBS.map((v, i) => ({ x: i, v }))).attr("d", d3.line().x(p => x(p.x)).y(p => y(p.v))).attr("fill", "none").attr("stroke", "#333").attr("stroke-width", 1.2).attr("stroke-dasharray", "4,3");
+                OBS.forEach((v, i) => g.append("circle").attr("cx", x(i)).attr("cy", y(v)).attr("r", 2.2).attr("fill", "#333"));
+                const fan = (lo, hi) => d3.range(4).map(k => ({ x: origin + k + 1, lo: lo(k), hi: hi(k) }));
+                const area = d3.area().x(p => x(p.x)).y0(p => y(Math.max(0, p.lo))).y1(p => y(Math.min(yMax, p.hi))).curve(d3.curveMonotoneX);
+                const ln = pts => d3.line().x(p => x(p.x)).y(p => y(p.v)).curve(d3.curveMonotoneX)(pts);
+                if (kind === "models") {
+                    mdl.forEach(mo => {
+                        g.append("path").datum(fan(k => mo.mu(k) - z90 * mo.sig(k), k => mo.mu(k) + z90 * mo.sig(k))).attr("d", area).attr("fill", mo.col).attr("opacity", 0.09);
+                        g.append("path").attr("d", ln(d3.range(4).map(k => ({ x: origin + k + 1, v: mo.mu(k) })))).attr("fill", "none").attr("stroke", mo.col).attr("stroke-width", 1.4);
+                    });
+                } else {
+                    // both ensembles, overlaid
+                    METHODS.forEach(([meth, col]) => {
+                        g.append("path").datum(fan(k => qEns(mdl, k, 0.05, meth), k => qEns(mdl, k, 0.95, meth))).attr("d", area).attr("fill", col).attr("opacity", 0.13);
+                        const med = d3.range(4).map(k => ({ x: origin + k + 1, v: qEns(mdl, k, 0.5, meth) }));
+                        g.append("path").attr("d", ln(med)).attr("fill", "none").attr("stroke", col).attr("stroke-width", 2.2);
+                    });
+                    // legend
+                    const lg = g.append("g").attr("transform", "translate(2,2)");
+                    [["Median", MED], ["LOP", LOPC]].forEach(([lab, col], i) => {
+                        lg.append("line").attr("x1", 0).attr("x2", 15).attr("y1", i * 14).attr("y2", i * 14).attr("stroke", col).attr("stroke-width", 2.6);
+                        lg.append("text").attr("x", 19).attr("y", i * 14 + 3.5).attr("font-family", F).attr("font-size", "10.5px").attr("font-weight", 600).attr("fill", "#555").text(lab);
+                    });
+                }
+                g.append("line").attr("x1", 0).attr("x2", iw).attr("y1", ih).attr("y2", ih).attr("stroke", "#ccc");
+                g.append("text").attr("x", x(origin)).attr("y", ih + 15).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#888").text("last");
+                d3.range(4).forEach(k => g.append("text").attr("x", x(origin + k + 1)).attr("y", ih + 15).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#888").text("+" + (k + 1)));
+                g.append("text").attr("x", iw / 2).attr("y", ih + 30).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#aaa").text("weeks →");
+            }
+
+            // Middle column: how each method combines, as two stacked subplots
+            function cdfStack(ox) {
+                const m = { t: 20, r: 12, b: 28, l: 58 }, k = 3;
+                const colW = pw - m.l - m.r, totalH = H - m.t - m.b, vgap = 44;
+                const subH = (totalH - vgap) / 2;
+                const xMin = d3.min(mdl, mo => mo.mu(k) - 2.6 * mo.sig(k)), xMax = d3.max(mdl, mo => mo.mu(k) + 2.6 * mo.sig(k));
+                const grid = d3.range(0, 81).map(i => xMin + (xMax - xMin) * i / 80);
+                const subs = [["median", MED, "Median"], ["lop", LOPC, "LOP"]];
+                subs.forEach(([meth, col, label], si) => {
+                    const gy = m.t + si * (subH + vgap);
+                    const g = svg.append("g").attr("transform", `translate(${ox + m.l},${gy})`);
+                    const x = d3.scaleLinear().domain([xMin, xMax]).range([0, colW]);
+                    const y = d3.scaleLinear().domain([0, 1]).range([subH, 0]);
+                    g.append("text").attr("x", 0).attr("y", -6).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", col).text(label);
+                    const ya = g.append("g").call(d3.axisLeft(y).ticks(3).tickFormat(d3.format(".0%"))); ya.selectAll("text").attr("font-family", F).attr("font-size", "10px").attr("fill", "#999"); ya.selectAll("line").attr("stroke", "#eee"); ya.select(".domain").attr("stroke", "#ccc");
+                    // member-model CDFs (faint)
+                    mdl.forEach(mo => g.append("path").datum(grid).attr("d", d3.line().x(xx => x(xx)).y(xx => y(ncdf(xx, mo.mu(k), mo.sig(k)))).curve(d3.curveBasis)).attr("fill", "none").attr("stroke", mo.col).attr("stroke-width", 1).attr("opacity", 0.35));
+                    // this method's combined curve
+                    let pts;
+                    if (meth === "median") pts = d3.range(1, 100).map(i => { const tau = i / 100; return [qEns(mdl, k, tau, "median"), tau]; });
+                    else pts = grid.map(xx => [xx, d3.mean(mdl, mo => ncdf(xx, mo.mu(k), mo.sig(k)))]);
+                    g.append("path").datum(pts).attr("d", d3.line().x(p => x(p[0])).y(p => y(p[1])).curve(d3.curveBasis)).attr("fill", "none").attr("stroke", col).attr("stroke-width", 2.6);
+                    // annotate the mechanism: median = middle of the values (horizontal); LOP = average of the probabilities (vertical)
+                    if (meth === "median") {
+                        const tau = 0.5, emv = qEns(mdl, k, 0.5, "median");
+                        g.append("line").attr("x1", 0).attr("x2", colW).attr("y1", y(tau)).attr("y2", y(tau)).attr("stroke", "#ccc").attr("stroke-dasharray", "3,2");
+                        mdl.forEach(mo => g.append("circle").attr("cx", x(mo.mu(k))).attr("cy", y(tau)).attr("r", 2.4).attr("fill", mo.col).attr("opacity", 0.85).attr("stroke", "#fff").attr("stroke-width", 0.6));
+                        g.append("circle").attr("cx", x(emv)).attr("cy", y(tau)).attr("r", 3.6).attr("fill", MED).attr("stroke", "#fff").attr("stroke-width", 1.2);
+                        g.append("text").attr("x", x(emv) + 7).attr("y", y(tau) - 6).attr("font-family", F).attr("font-size", "10px").attr("font-weight", 700).attr("fill", ACCENT_DK).text("← median of the values");
+                    } else {
+                        const xv = xMin + (xMax - xMin) * 0.5, avgp = d3.mean(mdl, mo => ncdf(xv, mo.mu(k), mo.sig(k)));
+                        g.append("line").attr("x1", x(xv)).attr("x2", x(xv)).attr("y1", 0).attr("y2", subH).attr("stroke", "#ccc").attr("stroke-dasharray", "3,2");
+                        mdl.forEach(mo => g.append("circle").attr("cx", x(xv)).attr("cy", y(ncdf(xv, mo.mu(k), mo.sig(k)))).attr("r", 2.4).attr("fill", mo.col).attr("opacity", 0.85).attr("stroke", "#fff").attr("stroke-width", 0.6));
+                        g.append("circle").attr("cx", x(xv)).attr("cy", y(avgp)).attr("r", 3.6).attr("fill", LOPC).attr("stroke", "#fff").attr("stroke-width", 1.2);
+                        g.append("text").attr("x", x(xv)).attr("y", y(avgp) + 16).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("font-weight", 700).attr("fill", LOPC).text("↑ average of the probabilities");
+                    }
+                    if (si === subs.length - 1) {
+                        const xa = g.append("g").attr("transform", `translate(0,${subH})`).call(d3.axisBottom(x).ticks(4).tickFormat(sfmt)); xa.selectAll("text").attr("font-family", F).attr("font-size", "10px").attr("fill", "#999"); xa.selectAll("line").attr("stroke", "#ccc"); xa.select(".domain").attr("stroke", "#ccc");
+                        g.append("text").attr("x", colW / 2).attr("y", subH + 25).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#aaa").text("admissions, 4 weeks ahead");
+                    } else {
+                        g.append("line").attr("x1", 0).attr("x2", colW).attr("y1", subH).attr("y2", subH).attr("stroke", "#ccc");
+                    }
+                });
+                svg.append("text").attr("transform", `translate(${ox + 2},${m.t + totalH / 2}) rotate(-90)`).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#aaa").text("cumulative probability");
+            }
+
+            // Right column: median and LOP ensembles as two stacked subplots (not overlaid)
+            function ensembleStack(ox) {
+                const m = { t: 20, r: 10, b: 28, l: 58 };
+                const colW = pw - m.l - m.r, totalH = H - m.t - m.b, vgap = 44;
+                const subH = (totalH - vgap) / 2;
+                const subs = [["median", MED, "Median ensemble"], ["lop", LOPC, "LOP ensemble"]];
+                subs.forEach(([meth, col, label], si) => {
+                    const gy = m.t + si * (subH + vgap);
+                    const g = svg.append("g").attr("transform", `translate(${ox + m.l},${gy})`);
+                    const x = d3.scaleLinear().domain([0, origin + 4]).range([0, colW]);
+                    const y = d3.scaleLinear().domain([0, yMax]).range([subH, 0]);
+                    g.append("text").attr("x", 0).attr("y", -6).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", col).text(label);
+                    const ya = g.append("g").call(d3.axisLeft(y).ticks(3).tickFormat(sfmt)); ya.selectAll("text").attr("font-family", F).attr("font-size", "10px").attr("fill", "#999"); ya.selectAll("line").attr("stroke", "#eee"); ya.select(".domain").attr("stroke", "#ccc");
+                    g.append("path").datum(OBS.map((v, i) => ({ x: i, v }))).attr("d", d3.line().x(p => x(p.x)).y(p => y(p.v))).attr("fill", "none").attr("stroke", "#333").attr("stroke-width", 1).attr("stroke-dasharray", "4,3");
+                    OBS.forEach((v, i) => g.append("circle").attr("cx", x(i)).attr("cy", y(v)).attr("r", 1.8).attr("fill", "#333"));
+                    const fanData = d3.range(4).map(k => ({ x: origin + k + 1, lo: qEns(mdl, k, 0.05, meth), hi: qEns(mdl, k, 0.95, meth) }));
+                    const area = d3.area().x(p => x(p.x)).y0(p => y(Math.max(0, p.lo))).y1(p => y(Math.min(yMax, p.hi))).curve(d3.curveMonotoneX);
+                    g.append("path").datum(fanData).attr("d", area).attr("fill", col).attr("opacity", 0.16);
+                    const med = d3.range(4).map(k => ({ x: origin + k + 1, v: qEns(mdl, k, 0.5, meth) }));
+                    g.append("path").attr("d", d3.line().x(p => x(p.x)).y(p => y(p.v)).curve(d3.curveMonotoneX)(med)).attr("fill", "none").attr("stroke", col).attr("stroke-width", 2);
+                    g.append("line").attr("x1", 0).attr("x2", colW).attr("y1", subH).attr("y2", subH).attr("stroke", "#ccc");
+                    if (si === subs.length - 1) {
+                        g.append("text").attr("x", x(origin)).attr("y", subH + 13).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#888").text("last");
+                        d3.range(4).forEach(k => g.append("text").attr("x", x(origin + k + 1)).attr("y", subH + 13).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#888").text("+" + (k + 1)));
+                        g.append("text").attr("x", colW / 2).attr("y", subH + 25).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#aaa").text("weeks →");
+                    }
+                });
+                svg.append("text").attr("transform", `translate(${ox + 2},${m.t + totalH / 2}) rotate(-90)`).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#aaa").text("Weekly admissions");
+            }
+
+            function arrow(cx, cy) {
+                const a = svg.append("g");
+                a.append("line").attr("x1", cx - 15).attr("x2", cx + 3).attr("y1", cy).attr("y2", cy).attr("stroke", "#9aa8ad").attr("stroke-width", 2.6);
+                a.append("path").attr("d", `M${cx},${cy - 8} L${cx + 15},${cy} L${cx},${cy + 8} Z`).attr("fill", "#9aa8ad");
+            }
+
+            timePanel(0, "Individual models", "models");
+            cdfStack(pw + gap);
+            ensembleStack(2 * (pw + gap));
+            const arrowY = 20 + (H - 48) / 2;   // vertical centre of the stacked columns
+            arrow(pw + gap / 2, arrowY);
+            arrow(2 * pw + 1.5 * gap, arrowY);
+
+            // --- per-panel captions (panel 1 reflects the current alignment) ---
+            cap1.innerHTML = `<strong>Member models.</strong> Each line is one model's 4-week forecast (shaded = its 90% interval). They differ in their <strong>growth rate</strong>, or how steeply admissions climb. Increasing the model alignment pulls the models together.`;
+            cap2.innerHTML = `<strong>Combining.</strong> At the final week each method builds one forecast from the models' probability curves: <span style="color:${MED};font-weight:700">median</span> takes the middle value at each quantile, <span style="color:${LOPC};font-weight:700">LOP</span> averages the whole curves.`;
+            cap3.innerHTML = `<strong>Ensemble.</strong> The two results, one above the other. As alignment drops, <span style="color:${LOPC};font-weight:700">LOP</span> widens to absorb the additional uncertainty, while the <span style="color:${MED};font-weight:700">median</span> stays close to the models' own spread.`;
+        }
+        draw();
+    })();
+
+    // ---------- 2. Weighted Interval Score: fan + components + interval ladder ----------
+    (function () {
+        const fig = d3.select("#wis-fig"); if (fig.empty()) return;
+        const decomp = d3.select("#wis-decomp"), contrib = d3.select("#wis-contrib");
+        const obsEl = document.getElementById("wis-obs"), obsOut = document.getElementById("wis-obs-out"), read = document.getElementById("wis-read");
+        let sharp = "medium", selWeek = 3;
+        const OBS = [2200, 2900, 3700, 4500, 5200, 6000], origin = OBS.length - 1;
+        const spreads = { narrow: 1100, medium: 2200, wide: 3800 }, CENTRAL = 2000, yMax = 28000;
+        const mu = k => OBS[origin] + CENTRAL * (k + 1), sig = k => spreads[sharp] * Math.sqrt(k + 1);
+        const zA = { 0.5: 0.674, 0.2: 1.282, 0.1: 1.645, 0.05: 1.960 };
+        const levels = [0.5, 0.2, 0.1, 0.05].map(a => ({ a, z: zA[a], pct: Math.round((1 - a) * 100), w: a / 2 }));
+        const DISP = ACCENT, OVER = "#e0a030", UNDER = BAD;   // dispersion / over-prediction / under-prediction
+
+        function wire(id, isSharp) {
+            document.querySelectorAll("#" + id + " button").forEach(b => b.addEventListener("click", () => {
+                document.querySelectorAll("#" + id + " button").forEach(x => x.classList.toggle("active", x === b));
+                if (isSharp) sharp = b.dataset.s; else selWeek = +b.dataset.w; draw();
+            }));
+        }
+        wire("wis-sharp", true); wire("wis-week", false);
+        obsEl.addEventListener("input", draw);
+
+        // WIS decomposition into dispersion, over-prediction, under-prediction
+        function components(M, S, obs) {
+            let disp = 0, over = 0, under = 0;
+            levels.forEach(({ a, z }) => { const l = M - z * S, u = M + z * S; disp += a * z * S; if (obs < l) over += (l - obs); else if (obs > u) under += (obs - u); });
+            if (obs < M) over += 0.5 * (M - obs); else under += 0.5 * (obs - M);
+            const denom = levels.length + 0.5;
+            return { disp: disp / denom, over: over / denom, under: under / denom };
+        }
+
+        function drawFan(obs, M, S) {
+            fig.selectAll("*").remove();
+            const W = 300, H = 230, m = { t: 26, r: 26, b: 30, l: 38 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+            const g = fig.append("g").attr("transform", `translate(${m.l},${m.t})`);
+            g.append("text").attr("x", -m.l + 2).attr("y", -14).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", "#10202f").text("Forecast & outcome");
+            const x = d3.scaleLinear().domain([0, origin + 4]).range([0, iw]), y = d3.scaleLinear().domain([0, yMax]).range([ih, 0]);
+            const ya = g.append("g").call(d3.axisLeft(y).ticks(4).tickFormat(d3.format("~s"))); ya.selectAll("text").attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#999"); ya.selectAll("line").attr("stroke", "#eee"); ya.select(".domain").attr("stroke", "#ccc");
+            g.append("text").attr("transform", "rotate(-90)").attr("x", -ih / 2).attr("y", -30).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#aaa").text("Weekly admissions");
+            g.append("path").datum(OBS.map((v, i) => ({ x: i, v }))).attr("d", d3.line().x(p => x(p.x)).y(p => y(p.v))).attr("fill", "none").attr("stroke", "#333").attr("stroke-width", 1.2).attr("stroke-dasharray", "4,3");
+            OBS.forEach((v, i) => g.append("circle").attr("cx", x(i)).attr("cy", y(v)).attr("r", 2.2).attr("fill", "#333"));
+            const fan = z => d3.range(4).map(k => ({ x: origin + k + 1, lo: Math.max(0, mu(k) - z * sig(k)), hi: Math.min(yMax, mu(k) + z * sig(k)) }));
+            const area = d3.area().x(p => x(p.x)).y0(p => y(p.lo)).y1(p => y(p.hi)).curve(d3.curveMonotoneX);
+            // nested intervals: outer (faint) to inner (darker)
+            levels.slice().reverse().forEach((lv, i) => g.append("path").datum(fan(lv.z)).attr("d", area).attr("fill", ACCENT).attr("opacity", 0.08 + i * 0.05));
+            g.append("path").datum(d3.range(4).map(k => ({ x: origin + k + 1, v: mu(k) }))).attr("d", d3.line().x(p => x(p.x)).y(p => y(p.v)).curve(d3.curveMonotoneX)).attr("fill", "none").attr("stroke", ACCENT).attr("stroke-width", 2.2);
+            g.append("line").attr("x1", 0).attr("x2", iw).attr("y1", ih).attr("y2", ih).attr("stroke", "#ccc");
+            g.append("text").attr("x", x(origin)).attr("y", ih + 15).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#888").text("last");
+            d3.range(4).forEach(k => g.append("text").attr("x", x(origin + k + 1)).attr("y", ih + 15).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "10px").attr("fill", "#888").text("+" + (k + 1)));
+            // interval labels at the final week (outer two only, to avoid crowding)
+            [levels[0], levels[levels.length - 1]].forEach(lv => g.append("text").attr("x", iw + 3).attr("y", y(Math.min(yMax, mu(3) + lv.z * sig(3)))).attr("dominant-baseline", "middle").attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#8aa6b0").text(lv.pct + "%"));
+            // selected week + outcome
+            const sx = x(origin + selWeek + 1);
+            const l50 = M - zA[0.5] * S, u50 = M + zA[0.5] * S, l95 = M - zA[0.05] * S, u95 = M + zA[0.05] * S;
+            const in50 = obs >= l50 && obs <= u50, inAll = obs >= l95 && obs <= u95;
+            const col = in50 ? GOOD : (inAll ? OVER : BAD);
+            g.append("line").attr("x1", sx).attr("x2", sx).attr("y1", 0).attr("y2", ih).attr("stroke", ACCENT_DK).attr("stroke-width", 1).attr("stroke-dasharray", "3,3").attr("opacity", 0.5);
+            if (!in50) {
+                const b = obs < l50 ? l50 : u50;
+                g.append("line").attr("x1", sx).attr("x2", sx).attr("y1", y(Math.max(0, Math.min(yMax, b)))).attr("y2", y(Math.max(0, Math.min(yMax, obs)))).attr("stroke", col).attr("stroke-width", 3);
+            }
+            const oy = y(Math.max(0, Math.min(yMax, obs)));
+            const oc = g.append("g").style("cursor", "ns-resize");
+            oc.append("circle").attr("cx", sx).attr("cy", oy).attr("r", 15).attr("fill", "transparent");
+            oc.append("circle").attr("cx", sx).attr("cy", oy).attr("r", 5.5).attr("fill", col).attr("stroke", "#fff").attr("stroke-width", 1.5);
+            oc.append("text").attr("x", sx - 8).attr("y", oy + 3.5).attr("text-anchor", "end").attr("font-family", F).attr("font-size", "10px").attr("font-weight", 600).attr("fill", col).text("outcome");
+            oc.append("path").attr("d", `M${sx + 9},${oy - 2.5} l4,0 l-2,-3.3 z M${sx + 9},${oy + 2.5} l4,0 l-2,3.3 z`).attr("fill", col).attr("opacity", 0.85);
+            const step = +obsEl.step || 250, omin = +obsEl.min, omax = +obsEl.max;
+            oc.call(d3.drag().on("start drag", (ev) => {
+                const py = d3.pointer(ev, fig.node())[1] - m.t;   // viewBox-space y, robust to scaling
+                let ny = Math.round(y.invert(py) / step) * step;
+                ny = Math.max(omin, Math.min(omax, ny));
+                if (+obsEl.value !== ny) { obsEl.value = ny; draw(); }
+            }));
+        }
+
+        function drawDecomp(obs, M, S) {
+            decomp.selectAll("*").remove();
+            const W = 300, H = 230, m = { t: 44, r: 50, b: 10, l: 10 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+            const g = decomp.append("g").attr("transform", `translate(${m.l},${m.t})`);
+            g.append("text").attr("x", 0).attr("y", -30).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", "#10202f").text("Total WIS breakdown");
+            const c = components(M, S, obs), wis = c.disp + c.over + c.under, refMax = 6000;
+            g.append("text").attr("x", W - m.l - m.r + m.r - 2).attr("y", -30).attr("text-anchor", "end").attr("font-family", F).attr("font-size", "13px").attr("font-weight", 700).attr("fill", "#10202f").text("WIS " + fmt(Math.round(wis)));
+            const xv = d3.scaleLinear().domain([0, refMax]).range([0, iw]).clamp(true);
+            const barY = 0, barH = 38;
+            const segs = [["Dispersion", c.disp, DISP], ["Over-prediction", c.over, OVER], ["Under-prediction", c.under, UNDER]];
+            let acc = 0;
+            segs.forEach(([lab, val, color]) => { if (val > 0) { g.append("rect").attr("x", xv(acc)).attr("y", barY).attr("width", Math.max(0, xv(acc + val) - xv(acc))).attr("height", barH).attr("fill", color).attr("stroke", "#fff").attr("stroke-width", 0.6); acc += val; } });
+            const xa = g.append("g").attr("transform", `translate(0,${barY + barH})`).call(d3.axisBottom(xv).ticks(4).tickFormat(d3.format("~s"))); xa.selectAll("text").attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#999"); xa.selectAll("line").attr("stroke", "#ccc"); xa.select(".domain").attr("stroke", "#ccc");
+            const lg = g.append("g").attr("transform", `translate(0,${barY + barH + 24})`);
+            segs.forEach(([lab, val, color], i) => { const yy = i * 18; lg.append("rect").attr("x", 0).attr("y", yy).attr("width", 11).attr("height", 11).attr("rx", 2).attr("fill", color); lg.append("text").attr("x", 17).attr("y", yy + 9.5).attr("font-family", F).attr("font-size", "10.5px").attr("fill", "#555").text(lab + "  " + fmt(Math.round(val))); });
+            g.append("text").attr("x", 0).attr("y", barY + barH + 24 + 3 * 18 + 12).attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#9aa8ad").text("Total bar length = WIS (lower is better)");
+        }
+
+        // How each prediction interval feeds into the WIS: its weighted contribution,
+        // split into the interval's width (dispersion) and its penalty if the outcome is outside.
+        function drawPIcontrib(obs, M, S) {
+            contrib.selectAll("*").remove();
+            const W = 300, H = 230, m = { t: 26, r: 14, b: 40, l: 62 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+            const g = contrib.append("g").attr("transform", `translate(${m.l},${m.t})`);
+            g.append("text").attr("x", -m.l + 2).attr("y", -14).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", "#10202f").text("Each interval's share of WIS");
+            const denom = levels.length + 0.5, penCol = obs < M ? OVER : UNDER;
+            const rows = levels.map(lv => {
+                const l = M - lv.z * S, u = M + lv.z * S;
+                let pen = 0; if (obs < l) pen = (l - obs); else if (obs > u) pen = (obs - u);
+                return { label: lv.pct + "% PI", disp: (lv.a / 2) * (u - l) / denom, pen: pen / denom };
+            });
+            rows.push({ label: "median", disp: 0, pen: 0.5 * Math.abs(M - obs) / denom });
+            const x = d3.scaleLinear().domain([0, 3000]).range([0, iw]).clamp(true);
+            const rowH = ih / rows.length;
+            const xa = g.append("g").attr("transform", `translate(0,${ih})`).call(d3.axisBottom(x).ticks(3).tickFormat(d3.format("~s"))); xa.selectAll("text").attr("font-family", F).attr("font-size", "9px").attr("fill", "#999"); xa.selectAll("line").attr("stroke", "#ccc"); xa.select(".domain").attr("stroke", "#ccc");
+            g.append("text").attr("x", iw / 2).attr("y", ih + 28).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9px").attr("fill", "#aaa").text("contribution to WIS");
+            rows.forEach((r, i) => {
+                const yc = i * rowH + rowH / 2, bh = Math.min(15, rowH - 7);
+                g.append("rect").attr("x", 0).attr("y", yc - bh / 2).attr("width", x(r.disp)).attr("height", bh).attr("fill", DISP);
+                g.append("rect").attr("x", x(r.disp)).attr("y", yc - bh / 2).attr("width", Math.max(0, x(r.disp + r.pen) - x(r.disp))).attr("height", bh).attr("fill", penCol);
+                g.append("text").attr("x", -7).attr("y", yc).attr("text-anchor", "end").attr("dominant-baseline", "middle").attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#777").text(r.label);
+            });
+        }
+
+        function draw() {
+            const obs = +obsEl.value; obsOut.textContent = fmt(obs);
+            const M = mu(selWeek), S = sig(selWeek);
+            drawFan(obs, M, S);
+            drawDecomp(obs, M, S);
+            drawPIcontrib(obs, M, S);
+            read.innerHTML =
+                `<span style="font-size:15px;line-height:1.8"><strong>WIS</strong>&nbsp; = &nbsp;` +
+                `<strong style="color:${DISP}">dispersion</strong>&nbsp; + &nbsp;` +
+                `<strong style="color:${OVER}">over&#8209;prediction</strong>&nbsp; + &nbsp;` +
+                `<strong style="color:${UNDER}">under&#8209;prediction</strong></span>`;
+        }
+        draw();
+    })();
+
+    // ---------- 2b. Relative WIS: real WIS from the forecasts, then divided by the baseline ----------
+    (function () {
+        const svg = d3.select("#wis-ratio-fig"); if (svg.empty()) return;
+        const GRAY = "#bf8b30", GRAY_FILL = "#e8d4a0", POS = GOOD, NEG = BAD;   // GRAY/GRAY_FILL = baseline amber (stands out vs. model teal)
+        const WK = 26, peak = 11.5, sw = 4.2, DR = 0.7;
+        const season = t => 2200 + 20000 * Math.exp(-Math.pow((t - peak) / sw, 2));   // seasonal mean
+        const truth = t => season(t) * (1 + 0.05 * Math.sin(t * 1.9 + 0.6));          // realized surveillance
+        const slope = w => truth(w) - truth(w - 1);
+        const dsum = k => { let s = 0, p = 1; for (let j = 1; j <= k; j++) { p *= DR; s += p; } return s; };   // damped-trend weights
+
+        // Forecast distributions (Normal): the model extrapolates the recent trend (so it overshoots
+        // turning points); the FluSight-style baseline holds its median flat at the last value, widening by horizon.
+        const muM = (w, k) => Math.max(0, truth(w) + slope(w) * dsum(k)), sdM = (w, k) => (0.13 * truth(w) + 800) * (0.7 + 0.45 * k);
+        const muB = (w, k) => truth(w), sdB = (w, k) => (0.17 * truth(w) + 900) * (0.85 + 0.55 * k);
+
+        // Actual WIS: median term + weighted interval scores over central prediction intervals.
+        const PIS = [[0.5, 0.6745], [0.4, 0.8416], [0.3, 1.0364], [0.2, 1.2816], [0.1, 1.6449], [0.05, 1.9600], [0.02, 2.3263]];
+        function wisNorm(mu, sd, y) {
+            let s = 0.5 * Math.abs(y - mu);
+            for (const [a, z] of PIS) { const l = mu - z * sd, u = mu + z * sd; let is = u - l; if (y < l) is += (2 / a) * (l - y); else if (y > u) is += (2 / a) * (y - u); s += (a / 2) * is; }
+            return s / (PIS.length + 0.5);
+        }
+        const HOR = [1, 2, 3, 4];                                     // 1–4 weeks ahead, scored vs. what actually happened
+        const wisWeek = (mu, sd, w) => d3.mean(HOR, k => wisNorm(mu(w, k), sd(w, k), truth(w + k)));
+        const wisModelW = w => wisWeek(muM, sdM, w), wisBaseW = w => wisWeek(muB, sdB, w);
+        const ORIG = [2, 6, 10, 14, 18, 22];                         // sampled forecast origins shown in all three panels
+
+        const fine = d3.range(0, WK + 0.0001, 0.2);
+        const g = svg.append("g");
+        const defs = svg.append("defs");
+        defs.append("marker").attr("id", "wr-arrow").attr("viewBox", "0 0 10 10").attr("refX", 8).attr("refY", 5).attr("markerWidth", 7).attr("markerHeight", 7).attr("orient", "auto-start-reverse").append("path").attr("d", "M0,0 L10,5 L0,10 z").attr("fill", "#9aa8ad");
+        const styleAx = (sel, fs) => { sel.selectAll("text").attr("font-family", F).attr("font-size", fs).attr("fill", "#999"); sel.selectAll("line").attr("stroke", "#eee"); sel.select(".domain").attr("stroke", "#ccc"); };
+        const oyT = 52, hP = 210;
+
+        // ===== Panel A: forecasts across a season =====
+        (function () {
+            const ox = 46, iw = 195;
+            const p = g.append("g").attr("transform", `translate(${ox},${oyT})`);
+            p.append("text").attr("x", -40).attr("y", -28).attr("font-family", F).attr("font-size", "13px").attr("font-weight", 700).attr("fill", "#10202f").text("Forecasts across a season");
+            const x = d3.scaleLinear().domain([0, WK]).range([0, iw]);
+            const y = d3.scaleLinear().domain([0, 36000]).range([hP, 0]);
+            styleAx(p.append("g").call(d3.axisLeft(y).ticks(4).tickFormat(d3.format("~s"))), "8.5px");
+            p.append("text").attr("transform", "rotate(-90)").attr("x", -hP / 2).attr("y", -38).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9px").attr("fill", "#aaa").text("weekly admissions");
+            const clamp = v => Math.max(0, Math.min(36000, v));
+            const z50 = 0.6745;   // show the 50% interval so the fans stay legible
+            const areaFan = d3.area().x(d => x(d.x)).y0(d => y(d.lo)).y1(d => y(d.hi)).curve(d3.curveMonotoneX);
+            const medLine = d3.line().x(d => x(d.x)).y(d => y(d.med)).curve(d3.curveMonotoneX);
+            // fans start one week ahead, detached from the last data point
+            ORIG.forEach(w => {
+                const bpts = HOR.map(k => { const med = muB(w, k), hw = z50 * sdB(w, k); return { x: w + k, med: clamp(med), lo: clamp(med - hw), hi: clamp(med + hw) }; });
+                const mpts = HOR.map(k => { const med = muM(w, k), hw = z50 * sdM(w, k); return { x: w + k, med: clamp(med), lo: clamp(med - hw), hi: clamp(med + hw) }; });
+                p.append("path").datum(bpts).attr("d", areaFan).attr("fill", GRAY_FILL).attr("opacity", 0.4);
+                p.append("path").datum(mpts).attr("d", areaFan).attr("fill", ACCENT).attr("opacity", 0.28);
+                p.append("path").datum(bpts).attr("d", medLine).attr("fill", "none").attr("stroke", GRAY).attr("stroke-width", 1.3).attr("stroke-dasharray", "3,2");
+                p.append("path").datum(mpts).attr("d", medLine).attr("fill", "none").attr("stroke", ACCENT_DK).attr("stroke-width", 1.6);
+            });
+            p.append("path").datum(fine).attr("d", d3.line().x(d => x(d)).y(d => y(clamp(truth(d)))).curve(d3.curveMonotoneX)).attr("fill", "none").attr("stroke", "#1a1a1a").attr("stroke-width", 1.4);
+            p.append("line").attr("x1", 0).attr("x2", iw).attr("y1", hP).attr("y2", hP).attr("stroke", "#ccc");
+            styleAx(p.append("g").attr("transform", `translate(0,${hP})`).call(d3.axisBottom(x).tickValues(ORIG).tickFormat(d => "wk " + d)), "8px");
+            const lg = p.append("g").attr("transform", "translate(2,2)");
+            lg.append("line").attr("x1", 0).attr("x2", 14).attr("y1", 4).attr("y2", 4).attr("stroke", "#1a1a1a").attr("stroke-width", 1.4); lg.append("text").attr("x", 19).attr("y", 7.5).attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#555").text("observed");
+            lg.append("rect").attr("x", 0).attr("y", 13).attr("width", 14).attr("height", 9).attr("rx", 2).attr("fill", ACCENT).attr("opacity", 0.28); lg.append("text").attr("x", 19).attr("y", 20.5).attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#555").text("model forecast");
+            lg.append("rect").attr("x", 0).attr("y", 26).attr("width", 14).attr("height", 9).attr("rx", 2).attr("fill", GRAY_FILL); lg.append("text").attr("x", 19).attr("y", 33.5).attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#555").text("baseline forecast");
+        })();
+
+        // arrow: forecasts -> WIS (kept clear of panel B's y-axis label)
+        g.append("line").attr("x1", 245).attr("x2", 269).attr("y1", oyT + hP / 2).attr("y2", oyT + hP / 2).attr("stroke", "#9aa8ad").attr("stroke-width", 1.5).attr("marker-end", "url(#wr-arrow)");
+
+        // ===== Panel B: WIS of each forecast (grouped bars + observed admissions line) =====
+        (function () {
+            const ox = 319, iw = 195;
+            const p = g.append("g").attr("transform", `translate(${ox},${oyT})`);
+            p.append("text").attr("x", -40).attr("y", -28).attr("font-family", F).attr("font-size", "13px").attr("font-weight", 700).attr("fill", "#10202f").text("WIS of each forecast");
+            const data = ORIG.map(w => ({ w, m: wisModelW(w), b: wisBaseW(w) }));
+            const yMax = d3.max(data, d => Math.max(d.m, d.b)) * 1.12;
+            const x = d3.scaleLinear().domain([0, WK]).range([0, iw]);
+            const y = d3.scaleLinear().domain([0, yMax]).range([hP, 0]);
+            styleAx(p.append("g").call(d3.axisLeft(y).ticks(4).tickFormat(d3.format("~s"))), "8.5px");
+            p.append("text").attr("transform", "rotate(-90)").attr("x", -hP / 2).attr("y", -32).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9px").attr("fill", "#aaa").text("WIS (admissions)");
+            // observed admissions — the SAME solid black line as the left panel (own scale, drawn behind the bars)
+            const yObs = d3.scaleLinear().domain([0, 26000]).range([hP, 0]);
+            p.append("path").datum(fine).attr("d", d3.line().x(d => x(d)).y(d => yObs(Math.min(26000, truth(d)))).curve(d3.curveMonotoneX)).attr("fill", "none").attr("stroke", "#1a1a1a").attr("stroke-width", 1.4);
+            // grouped bars centered at each forecast week
+            const bw = 7;
+            data.forEach(d => {
+                p.append("rect").attr("class", "hi-item").attr("data-wk", d.w).attr("x", x(d.w) - bw).attr("y", y(d.m)).attr("width", bw).attr("height", hP - y(d.m)).attr("fill", ACCENT);
+                p.append("rect").attr("class", "hi-item").attr("data-wk", d.w).attr("x", x(d.w)).attr("y", y(d.b)).attr("width", bw).attr("height", hP - y(d.b)).attr("fill", GRAY);
+            });
+            p.append("line").attr("x1", 0).attr("x2", iw).attr("y1", hP).attr("y2", hP).attr("stroke", "#ccc");
+            styleAx(p.append("g").attr("transform", `translate(0,${hP})`).call(d3.axisBottom(x).tickValues(ORIG).tickFormat(d => "wk " + d)), "8px");
+            const lg = p.append("g").attr("transform", "translate(2,2)");
+            lg.append("rect").attr("width", 11).attr("height", 9).attr("rx", 2).attr("fill", ACCENT); lg.append("text").attr("x", 15).attr("y", 8).attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#555").text("model");
+            lg.append("rect").attr("x", 56).attr("width", 11).attr("height", 9).attr("rx", 2).attr("fill", GRAY); lg.append("text").attr("x", 71).attr("y", 8).attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#555").text("baseline");
+            lg.append("line").attr("x1", 112).attr("x2", 126).attr("y1", 5).attr("y2", 5).attr("stroke", "#1a1a1a").attr("stroke-width", 1.4); lg.append("text").attr("x", 130).attr("y", 8).attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#555").text("observed");
+        })();
+
+        // arrow: ÷ baseline
+        (function () {
+            const ax = 511, ay = oyT + hP / 2;
+            g.append("line").attr("x1", ax).attr("x2", ax + 32).attr("y1", ay).attr("y2", ay).attr("stroke", "#9aa8ad").attr("stroke-width", 1.5).attr("marker-end", "url(#wr-arrow)");
+        })();
+
+        // ===== Panel C: relative WIS (bars) =====
+        (function () {
+            const ox = 592, iw = 195;
+            const p = g.append("g").attr("transform", `translate(${ox},${oyT})`);
+            p.append("text").attr("x", -34).attr("y", -28).attr("font-family", F).attr("font-size", "13px").attr("font-weight", 700).attr("fill", "#10202f").text("Relative WIS");
+            const data = ORIG.map(w => ({ w, rel: wisModelW(w) / wisBaseW(w) }));
+            const yMax = Math.max(1.35, d3.max(data, d => d.rel) * 1.14);
+            const y = d3.scaleLinear().domain([0, yMax]).range([hP, 0]);
+            styleAx(p.append("g").call(d3.axisLeft(y).tickValues([0, 0.5, 1.0]).tickFormat(d3.format(".1f"))), "8.5px");
+            p.append("text").attr("transform", "rotate(-90)").attr("x", -hP / 2).attr("y", -28).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9px").attr("fill", "#aaa").text("Relative WIS");
+            // worse (above 1) / better (below 1) zones
+            p.append("rect").attr("x", 0).attr("y", 0).attr("width", iw).attr("height", y(1)).attr("fill", NEG).attr("opacity", 0.05);
+            p.append("rect").attr("x", 0).attr("y", y(1)).attr("width", iw).attr("height", hP - y(1)).attr("fill", POS).attr("opacity", 0.06);
+            const xb = d3.scaleBand().domain(ORIG).range([0, iw]).padding(0.42);
+            data.forEach(d => {
+                const gx = xb(d.w), col = d.rel <= 1 ? POS : NEG;
+                const near = d.rel > 0.85 && d.rel <= 1;   // too close to the 1.0 line to label above
+                p.append("rect").attr("class", "hi-item").attr("data-wk", d.w).attr("x", gx).attr("y", y(d.rel)).attr("width", xb.bandwidth()).attr("height", hP - y(d.rel)).attr("fill", col);
+                p.append("text").attr("class", "hi-item").attr("data-wk", d.w).attr("x", gx + xb.bandwidth() / 2).attr("y", near ? y(d.rel) + 11 : y(d.rel) - 4).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "8.5px").attr("font-weight", 700).attr("fill", near ? "#fff" : col).text(d3.format(".2f")(d.rel));
+            });
+            p.append("line").attr("x1", 0).attr("x2", iw).attr("y1", y(1)).attr("y2", y(1)).attr("stroke", "#6a7b80").attr("stroke-width", 1.2).attr("stroke-dasharray", "4,3");
+            p.append("text").attr("x", 1).attr("y", y(1) - 4).attr("text-anchor", "start").attr("font-family", F).attr("font-size", "8px").attr("fill", "#8a97a0").text("baseline");
+            p.append("text").attr("x", iw).attr("y", y(1) - 8).attr("text-anchor", "end").attr("font-family", F).attr("font-size", "8.5px").attr("font-weight", 600).attr("fill", NEG).text("↑ worse");
+            p.append("text").attr("x", iw).attr("y", y(1) + 14).attr("text-anchor", "end").attr("font-family", F).attr("font-size", "8.5px").attr("font-weight", 600).attr("fill", POS).text("↓ better");
+            p.append("line").attr("x1", 0).attr("x2", iw).attr("y1", hP).attr("y2", hP).attr("stroke", "#ccc");
+            styleAx(p.append("g").attr("transform", `translate(0,${hP})`).call(d3.axisBottom(xb).tickFormat(d => "wk " + d)), "8px");
+        })();
+
+        // ----- hover a forecast week on the left to highlight its scores in the other panels -----
+        const xAabs = wk => 46 + (wk / WK) * 195;
+        const hiBand = g.append("rect").attr("fill", "none").attr("stroke", ACCENT_DK).attr("stroke-width", 1.3).attr("rx", 3).attr("opacity", 0).attr("pointer-events", "none");
+        const setHi = w => {
+            g.selectAll(".hi-item").attr("opacity", function () { return (w == null || +this.getAttribute("data-wk") === w) ? 1 : 0.16; });
+            if (w == null) hiBand.attr("opacity", 0);
+            else hiBand.attr("x", xAabs(w + 0.5)).attr("y", oyT - 2).attr("width", xAabs(w + 4.5) - xAabs(w + 0.5)).attr("height", hP + 2).attr("opacity", 0.85);
+        };
+        ORIG.forEach(w => {
+            g.append("rect").attr("x", xAabs(w + 0.5)).attr("y", oyT).attr("width", xAabs(w + 4.5) - xAabs(w + 0.5)).attr("height", hP).attr("fill", "transparent").style("cursor", "pointer")
+                .on("mouseenter", () => setHi(w)).on("mouseleave", () => setHi(null));
+        });
+    })();
+
+    // ---------- 3. Coverage / calibration: a 4-week forecast + the coverage curve ----------
+    (function () {
+        const fanSvg = d3.select("#cov-fan"), calSvg = d3.select("#cov-curve");
+        if (fanSvg.empty()) return;
+        const read = document.getElementById("cov-read");
+        const playBtn = document.getElementById("cov-play");
+        const lvlSeg = document.getElementById("cov-lvl");
+        const GOLD = "#c98a2b", WEEKS = 24, yMax = 30000, XMAX = 25;
+        let s = 1.0, phase = "idle", playT = WEEKS, timer = null;   // playT = latest data point revealed; idle = whole season
+        const PEAK = WEEKS * 0.42, SW = WEEKS * 0.16;
+        const season = t => 2600 + 13000 * Math.exp(-Math.pow((t - PEAK) / SW, 2));  // seasonal mean the forecast targets
+        const sig = t => 0.13 * Math.max(500, season(t)) + 900;                       // noise scale
+        const Zc = { 10: 0.126, 20: 0.253, 30: 0.385, 40: 0.524, 50: 0.674, 60: 0.841, 70: 1.036, 80: 1.282, 90: 1.645, 95: 1.960 };
+        const curveLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95];
+        // one realized noisy surveillance series over the season: obs(t) = seasonal mean + standardized noise
+        const EPS = (function () {
+            let st = 1340; const rnd = () => { st = (st * 1103515245 + 12345) & 0x7fffffff; return st / 0x7fffffff; };
+            const out = [], n = WEEKS + 12;
+            for (let i = 0; i < n; i += 2) { const u1 = Math.max(1e-9, rnd()), u2 = rnd(), r = Math.sqrt(-2 * Math.log(u1)); out.push(r * Math.cos(2 * Math.PI * u2)); out.push(r * Math.sin(2 * Math.PI * u2)); }
+            return out.slice(0, n);
+        })();
+        const epsAt = t => EPS[t] || 0;
+        const obs = t => Math.max(0, season(t) + epsAt(t) * sig(t));
+        const selLvl = () => +(lvlSeg.querySelector("button.active") || { dataset: { l: "90" } }).dataset.l;
+        const shownResid = () => d3.range(1, playT + 1).map(t => epsAt(t));   // residuals of the data points revealed so far
+        const empCov = (L, resids) => { const z = Zc[L] * s; let c = 0; resids.forEach(r => { if (Math.abs(r) <= z) c++; }); return c / Math.max(1, resids.length); };
+
+        document.querySelectorAll("#cov-cal button").forEach(b => b.addEventListener("click", () => {
+            document.querySelectorAll("#cov-cal button").forEach(x => x.classList.toggle("active", x === b)); s = +b.dataset.s; draw();
+        }));
+        lvlSeg.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+            lvlSeg.querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b)); draw();
+        }));
+        if (playBtn) playBtn.addEventListener("click", play);
+
+        function play() {
+            if (timer) clearTimeout(timer);
+            phase = "playing"; playT = 1; if (playBtn) playBtn.textContent = "Playing…";
+            tick();
+        }
+        function tick() {
+            draw();
+            if (playT < WEEKS) { playT++; timer = setTimeout(tick, 280); }
+            else { phase = "idle"; timer = null; if (playBtn) playBtn.innerHTML = "↻ Replay season"; draw(); }
+        }
+
+        function drawSeason() {
+            fanSvg.selectAll("*").remove();
+            const W = 320, H = 250, m = { t: 24, r: 16, b: 32, l: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+            const g = fanSvg.append("g").attr("transform", `translate(${m.l},${m.t})`);
+            g.append("text").attr("x", -m.l + 2).attr("y", -12).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", "#10202f").text("Forecasts across a season");
+            const x = d3.scaleLinear().domain([0, XMAX]).range([0, iw]), y = d3.scaleLinear().domain([0, yMax]).range([ih, 0]);
+            const ya = g.append("g").call(d3.axisLeft(y).ticks(4).tickFormat(d3.format("~s"))); ya.selectAll("text").attr("font-family", F).attr("font-size", "9px").attr("fill", "#999"); ya.selectAll("line").attr("stroke", "#eee"); ya.select(".domain").attr("stroke", "#ccc");
+            const L = selLvl(), zsel = Zc[L] * s, playing = phase === "playing";
+            // Each week the model issues one 4-week-ahead forecast (a fan springing from that week's data
+            // point and widening with horizon). New forecasts are added week by week during play; at rest the
+            // whole season of weekly forecasts is shown.
+            const hf = h => Math.sqrt(h);                                   // horizon widening; hf(1)=1 = the scored 1-week interval
+            const ctr = (w, h) => h === 0 ? Math.min(yMax, obs(w)) : Math.min(yMax, season(w + h));
+            const fanBand = (w, zz) => {
+                const hs = d3.range(0, 5).filter(h => w + h <= XMAX);
+                return d3.area().x(h => x(w + h))
+                    .y0(h => y(Math.max(0, ctr(w, h) - zz * sig(w + h) * s * hf(h))))
+                    .y1(h => y(Math.min(yMax, ctr(w, h) + zz * sig(w + h) * s * hf(h))))
+                    .curve(d3.curveMonotoneX)(hs);
+            };
+            const medLine = w => { const hs = d3.range(0, 5).filter(h => w + h <= XMAX); return d3.line().x(h => x(w + h)).y(h => y(ctr(w, h))).curve(d3.curveMonotoneX)(hs); };
+            // show only the selected interval (the one chosen in "Highlight interval")
+            if (playing) {
+                // forecasts issued in earlier weeks, faded; the current week's forecast emphasized
+                d3.range(1, playT).forEach(w => g.append("path").attr("d", fanBand(w, Zc[L])).attr("fill", ACCENT).attr("opacity", 0.07));
+                g.append("path").attr("d", fanBand(playT, Zc[L])).attr("fill", ACCENT).attr("opacity", 0.22);
+                g.append("path").attr("d", medLine(playT)).attr("fill", "none").attr("stroke", ACCENT).attr("stroke-width", 1.6).attr("opacity", 0.9);
+            } else {
+                // whole season: every week's selected-level forecast, overlapping into a seasonal band
+                d3.range(1, WEEKS + 1).forEach(w => g.append("path").attr("d", fanBand(w, Zc[L])).attr("fill", ACCENT).attr("opacity", 0.1));
+                g.append("path").datum(d3.range(0, XMAX + 0.001, 1)).attr("d", d3.line().x(p => x(p)).y(p => y(Math.min(yMax, season(p)))).curve(d3.curveMonotoneX)).attr("fill", "none").attr("stroke", ACCENT).attr("stroke-width", 1.3).attr("opacity", 0.6);
+            }
+            // observed surveillance line (black) + outcome dots, up to the latest data point
+            const hist = d3.range(0, playT + 0.001, 1).map(t => ({ t, v: Math.min(yMax, obs(t)) }));
+            g.append("path").datum(hist).attr("d", d3.line().x(p => x(p.t)).y(p => y(p.v)).curve(d3.curveMonotoneX)).attr("fill", "none").attr("stroke", "#1a1a1a").attr("stroke-width", 1.3);
+            d3.range(1, playT + 1).forEach(t => {
+                g.append("circle").attr("cx", x(t)).attr("cy", y(Math.min(yMax, obs(t)))).attr("r", 3).attr("fill", "#1a1a1a").attr("stroke", "#fff").attr("stroke-width", 1);
+            });
+            // "now" marker at the latest data point during play
+            if (playing && playT < XMAX) {
+                g.append("line").attr("x1", x(playT)).attr("x2", x(playT)).attr("y1", 0).attr("y2", ih).attr("stroke", ACCENT_DK).attr("stroke-width", 1).attr("stroke-dasharray", "3,3").attr("opacity", 0.45);
+                g.append("text").attr("x", x(playT)).attr("y", -2).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "8.5px").attr("font-weight", 600).attr("fill", ACCENT_DK).text("now");
+            }
+            g.append("line").attr("x1", 0).attr("x2", iw).attr("y1", ih).attr("y2", ih).attr("stroke", "#ccc");
+            const xa = g.append("g").attr("transform", `translate(0,${ih})`).call(d3.axisBottom(x).tickValues([0, 5, 10, 15, 20, 25]).tickFormat(d => "wk " + d)); xa.selectAll("text").attr("font-family", F).attr("font-size", "8.5px").attr("fill", "#999"); xa.selectAll("line").attr("stroke", "#ccc"); xa.select(".domain").attr("stroke", "#ccc");
+            // legend (top-right, in the empty upper corner)
+            const lg = g.append("g").attr("transform", `translate(${iw - 96},2)`);
+            lg.append("circle").attr("cx", 4).attr("cy", 2).attr("r", 3).attr("fill", "#1a1a1a").attr("stroke", "#fff").attr("stroke-width", 1);
+            lg.append("text").attr("x", 12).attr("y", 5).attr("font-family", F).attr("font-size", "9px").attr("fill", "#555").text("observed outcome");
+            lg.append("rect").attr("x", 1).attr("y", 12).attr("width", 6).attr("height", 7).attr("fill", ACCENT).attr("opacity", 0.35);
+            lg.append("text").attr("x", 12).attr("y", 18).attr("font-family", F).attr("font-size", "9px").attr("fill", "#555").text("forecast interval");
+        }
+
+        function drawCal() {
+            calSvg.selectAll("*").remove();
+            const W = 320, H = 250, m = { t: 24, r: 14, b: 40, l: 48 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+            const g = calSvg.append("g").attr("transform", `translate(${m.l},${m.t})`);
+            g.append("text").attr("x", -m.l + 2).attr("y", -12).attr("font-family", F).attr("font-size", "12px").attr("font-weight", 700).attr("fill", "#10202f").text("Coverage over the season");
+            const x = d3.scaleLinear().domain([0, 100]).range([0, iw]), y = d3.scaleLinear().domain([0, 100]).range([ih, 0]);
+            const xa = g.append("g").attr("transform", `translate(0,${ih})`).call(d3.axisBottom(x).ticks(5).tickFormat(d => d + "%")); xa.selectAll("text").attr("font-family", F).attr("font-size", "9px").attr("fill", "#999"); xa.selectAll("line").attr("stroke", "#ccc"); xa.select(".domain").attr("stroke", "#ccc");
+            const ya = g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%")); ya.selectAll("text").attr("font-family", F).attr("font-size", "9px").attr("fill", "#999"); ya.selectAll("line").attr("stroke", "#eee"); ya.select(".domain").attr("stroke", "#ccc");
+            g.append("text").attr("x", iw / 2).attr("y", ih + 27).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#aaa").text("nominal interval");
+            g.append("text").attr("transform", "rotate(-90)").attr("x", -ih / 2).attr("y", -36).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9.5px").attr("fill", "#aaa").text("empirical coverage");
+            g.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(100)).attr("y2", y(100)).attr("stroke", "#bbb").attr("stroke-width", 1.4).attr("stroke-dasharray", "5,4");
+            // region + diagonal labels
+            g.append("text").attr("x", x(16)).attr("y", y(88)).attr("font-family", F).attr("font-size", "9px").attr("font-style", "italic").attr("fill", "#aeb9bd").text("too wide");
+            g.append("text").attr("x", x(84)).attr("y", y(13)).attr("text-anchor", "end").attr("font-family", F).attr("font-size", "9px").attr("font-style", "italic").attr("fill", "#aeb9bd").text("too narrow");
+            const ang = Math.atan2(-ih, iw) * 180 / Math.PI;
+            g.append("text").attr("transform", `translate(${x(63)},${y(63)}) rotate(${ang})`).attr("dy", 13).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "9px").attr("font-style", "italic").attr("fill", "#9aa8ad").text("well calibrated");
+            const resids = shownResid();
+            const pts = curveLevels.map(L => ({ L, e: empCov(L, resids) * 100 }));
+            g.append("path").datum(pts).attr("d", d3.line().x(d => x(d.L)).y(d => y(d.e)).curve(d3.curveMonotoneX)).attr("fill", "none").attr("stroke", ACCENT).attr("stroke-width", 2.4);
+            pts.forEach(p => g.append("circle").attr("cx", x(p.L)).attr("cy", y(p.e)).attr("r", 2.4).attr("fill", ACCENT));
+            const lv = selLvl(), se = empCov(lv, resids) * 100;
+            const col = Math.abs(se - lv) <= 6 ? GOOD : (se < lv ? BAD : GOLD);
+            g.append("line").attr("x1", x(lv)).attr("x2", x(lv)).attr("y1", ih).attr("y2", y(se)).attr("stroke", "#ccc").attr("stroke-dasharray", "3,2");
+            g.append("circle").attr("cx", x(lv)).attr("cy", y(se)).attr("r", 5).attr("fill", col).attr("stroke", "#fff").attr("stroke-width", 1.3);
+            if (phase === "playing") g.append("text").attr("x", iw).attr("y", -1).attr("text-anchor", "end").attr("font-family", F).attr("font-size", "10px").attr("font-weight", 700).attr("fill", "#888").text("week " + playT + " / " + WEEKS);
+        }
+
+        function draw() {
+            drawSeason();
+            drawCal();
+            const lv = selLvl(), resids = shownResid(), e = Math.round(empCov(lv, resids) * 100);
+            if (phase === "playing") {
+                read.innerHTML = `<strong>Week ${playT} of ${WEEKS}:</strong> so far, its <strong>${lv}%</strong> intervals have contained <strong>${e}%</strong> of the outcomes seen.`;
+            } else {
+                const verdict = Math.abs(s - 1) < 0.08 ? `<strong style="color:${GOOD}">well calibrated</strong>`
+                    : s < 1 ? `<strong style="color:${BAD}">overconfident</strong> (intervals too narrow)`
+                            : `<strong style="color:${GOLD}">underconfident</strong> (intervals too wide)`;
+                const where = Math.abs(e - lv) <= 6 ? "on" : (e < lv ? "below" : "above");
+                read.innerHTML = `Across the season, its <strong>${lv}%</strong> intervals cover <strong>${e}%</strong> of outcomes on average, so the model is ${verdict}, its curve sitting <strong>${where}</strong> the diagonal.`;
+            }
+        }
+        draw();
+    })();
+})();
+</script>
+<script>
+// ===== Interactive activity / trend explainers: prediction-interval fan =====
 (function() {
-    const FONT = "Helvetica Neue, Arial, sans-serif";
-    const MODEL_COLS = ["#7ec8e3","#e07b54","#90be6d","#f9c74f","#a480cf","#48bfe3"];
+    const F = "Libre Franklin, Helvetica Neue, Arial, sans-serif", ACCENT = "#1f7a8c", ACCENT_DK = "#16606e", INK = "#1a1a1a";
+    const fmt = d3.format(","), Z50 = 0.6745, Z90 = 1.6449;
+    const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + fmt(Math.abs(Math.round(v)));
 
-    const nModels = 6, nWeeks = 4;
-    const quantileLevels = [0.025, 0.10, 0.25, 0.50, 0.75, 0.90, 0.975];
-    const weeks = d3.range(nWeeks).map(i => i + 1);
-
-    function approxQnorm(p) {
-        const a = [0,-3.0,-1.88,-1.28,-0.67,0,0.67,1.28,1.88,3.0];
-        const ps = [0,0.001,0.025,0.10,0.25,0.50,0.75,0.90,0.975,0.999];
-        for (let i = 1; i < ps.length; i++) {
-            if (p <= ps[i]) {
-                const t = (p - ps[i-1]) / (ps[i] - ps[i-1]);
-                return a[i-1] + t * (a[i] - a[i-1]);
-            }
-        }
-        return 3.0;
+    function ncdf(v, mu, s) {
+        const z = (v - mu) / (s * Math.SQRT2);
+        const t = 1 / (1 + 0.3275911 * Math.abs(z));
+        const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t
+                  - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+        return 0.5 * (1 + (z >= 0 ? y : -y));
     }
 
-    // Synthetic data — 6 models with different trends and uncertainty
-    const modelData = [];
-    for (let m = 0; m < nModels; m++) {
-        const bases = [140,100,170,120,155,110];
-        const slopes = [18,28,4,30,8,22];
-        const curves = [-1.5,-1.0,-2.0,0.5,-1.8,-0.8];
-        const spreads = [14,30,18,36,12,24];
-        modelData[m] = [];
-        for (let w = 0; w < nWeeks; w++) {
-            const med = bases[m] + slopes[m]*weeks[w] + curves[m]*weeks[w]*weeks[w];
-            const sp = spreads[m] * (1 + w * 0.15); // uncertainty grows with horizon
-            const q = {};
-            quantileLevels.forEach(tau => { q[tau] = med + sp * approxQnorm(tau); });
-            modelData[m][w] = { median: med, quantiles: q };
-        }
-    }
-
-    // Ensemble computations
-    function computeMedianEns(active) {
-        const models = [...active];
-        if (models.length === 0) return null;
-        const result = [];
-        for (let w = 0; w < nWeeks; w++) {
-            const q = {};
-            quantileLevels.forEach(tau => {
-                const vals = models.map(m => modelData[m][w].quantiles[tau]).sort(d3.ascending);
-                q[tau] = d3.median(vals);
-            });
-            result[w] = { quantiles: q, median: q[0.50] };
-        }
-        return result;
-    }
-
-    function computeLopEns(active) {
-        const models = [...active];
-        if (models.length === 0) return null;
-        const result = [];
-        for (let w = 0; w < nWeeks; w++) {
-            const allVals = models.flatMap(m => Object.values(modelData[m][w].quantiles));
-            const xMin = d3.min(allVals) - 25, xMax = d3.max(allVals) + 25;
-            const xGrid = d3.range(150).map(i => xMin + (xMax - xMin) * i / 149);
-
-            function modelCDF(m, x) {
-                const vals = quantileLevels.map(tau => modelData[m][w].quantiles[tau]);
-                if (x <= vals[0]) return quantileLevels[0];
-                if (x >= vals[vals.length-1]) return quantileLevels[quantileLevels.length-1];
-                for (let i = 1; i < vals.length; i++) {
-                    if (x <= vals[i]) {
-                        const t = (x - vals[i-1]) / (vals[i] - vals[i-1]);
-                        return quantileLevels[i-1] + t * (quantileLevels[i] - quantileLevels[i-1]);
-                    }
-                }
-                return quantileLevels[quantileLevels.length-1];
-            }
-
-            const avgCDF = xGrid.map(x => {
-                let sum = 0;
-                for (const m of models) sum += modelCDF(m, x);
-                return { x, cdf: sum / models.length };
-            });
-
-            const q = {};
-            quantileLevels.forEach(tau => {
-                for (let i = 1; i < avgCDF.length; i++) {
-                    if (avgCDF[i].cdf >= tau) {
-                        const t = (tau - avgCDF[i-1].cdf) / (avgCDF[i].cdf - avgCDF[i-1].cdf + 1e-9);
-                        q[tau] = avgCDF[i-1].x + t * (avgCDF[i].x - avgCDF[i-1].x);
-                        return;
-                    }
-                }
-                q[tau] = avgCDF[avgCDF.length-1].x;
-            });
-            result[w] = { quantiles: q, median: q[0.50] };
-        }
-        return result;
-    }
-
-    // Scales
-    const allVals = d3.range(nModels).flatMap(m => d3.range(nWeeks).flatMap(w => Object.values(modelData[m][w].quantiles)));
-    const yDomain = [d3.min(allVals) - 10, d3.max(allVals) + 10];
-    const active = new Set(d3.range(nModels));
-    const cdfWeek = 2; // Week 3 for CDF panel
-    let currentMode = "median";
-
-    const medianEns = computeMedianEns(active);
-    const lopEns = computeLopEns(active);
-
-    // ============ FAN CHART ============
-    function drawFan(ens) {
-        const svg = d3.select("#ens-fan");
-        svg.selectAll("*").remove();
-        const W = 540, H = 300;
-        const margin = {top: 14, right: 70, bottom: 36, left: 50};
-        const iW = W - margin.left - margin.right;
-        const iH = H - margin.top - margin.bottom;
-        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-        const x = d3.scaleLinear().domain([0.5, nWeeks + 0.5]).range([0, iW]);
-        const y = d3.scaleLinear().domain(yDomain).range([iH, 0]);
-
-        g.append("g").attr("transform", `translate(0,${iH})`)
-            .call(d3.axisBottom(x).tickValues(weeks).tickFormat(d => `Week ${d}`))
-            .selectAll("text").attr("font-family", FONT).attr("font-size","10px");
-        g.append("g").call(d3.axisLeft(y).ticks(5))
-            .selectAll("text").attr("font-family", FONT).attr("font-size","10px");
-        g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-38)
-            .attr("text-anchor","middle").attr("font-family",FONT).attr("font-size","11px").attr("fill","#888").text("Hospitalizations");
-        g.append("text").attr("x",iW/2).attr("y",iH+32).attr("text-anchor","middle")
-            .attr("font-family",FONT).attr("font-size","11px").attr("fill","#888").text("Forecast Horizon");
-
-        // Ensemble bands
-        const area95 = d3.area().x((d,i) => x(weeks[i]))
-            .y0((d,i) => y(ens[i].quantiles[0.025])).y1((d,i) => y(ens[i].quantiles[0.975]))
-            .curve(d3.curveCardinal.tension(0.5));
-        g.append("path").datum(weeks).attr("d", area95)
-            .attr("fill","#4A7FB5").attr("opacity",0.13).attr("stroke","#4A7FB5").attr("stroke-width",0.5).attr("stroke-opacity",0.25);
-
-        const area50 = d3.area().x((d,i) => x(weeks[i]))
-            .y0((d,i) => y(ens[i].quantiles[0.25])).y1((d,i) => y(ens[i].quantiles[0.75]))
-            .curve(d3.curveCardinal.tension(0.5));
-        g.append("path").datum(weeks).attr("d", area50)
-            .attr("fill","#4A7FB5").attr("opacity",0.22).attr("stroke","#4A7FB5").attr("stroke-width",0.5).attr("stroke-opacity",0.3);
-
-        const ensLine = d3.line().x((d,i) => x(weeks[i])).y((d,i) => y(ens[i].median))
-            .curve(d3.curveCardinal.tension(0.5));
-        g.append("path").datum(weeks).attr("d", ensLine)
-            .attr("fill","none").attr("stroke","#2C5F8A").attr("stroke-width",2.5);
-
-        // Model median lines on top
-        for (let m = 0; m < nModels; m++) {
-            const line = d3.line().x((d,i) => x(weeks[i])).y((d,i) => y(modelData[m][i].median))
-                .curve(d3.curveCardinal.tension(0.5));
-            g.append("path").datum(weeks).attr("d", line)
-                .attr("fill","none").attr("stroke", MODEL_COLS[m]).attr("stroke-width",1.8).attr("opacity",0.7);
-        }
-
-        // Labels on last week
-        const lw = nWeeks - 1, lx = x(weeks[lw]) + 6;
-        g.append("text").attr("x",lx).attr("y",y(ens[lw].quantiles[0.975])+3)
-            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#4A7FB5").text("95% PI");
-        g.append("text").attr("x",lx).attr("y",y(ens[lw].quantiles[0.75])+3)
-            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#4A7FB5").text("50% PI");
-        g.append("text").attr("x",lx).attr("y",y(ens[lw].median)+4)
-            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#2C5F8A").attr("font-weight","600").text("Median");
-
-        // Vertical line at CDF week
-        g.append("line").attr("x1",x(weeks[cdfWeek])).attr("x2",x(weeks[cdfWeek]))
-            .attr("y1",0).attr("y2",iH)
-            .attr("stroke","#2C5F8A").attr("stroke-width",1).attr("stroke-dasharray","4,3").attr("opacity",0.5);
-        g.append("text").attr("x",x(weeks[cdfWeek])).attr("y",-3).attr("text-anchor","middle")
-            .attr("font-family",FONT).attr("font-size","9px").attr("fill","#2C5F8A").text("→ see right panel");
-    }
-
-    // ============ CDF PANEL ============
-    function drawCDF(ens, mode) {
-        const svg = d3.select("#ens-cdf");
-        svg.selectAll("*").remove();
-        const W = 340, H = 300;
-        const margin = {top: 22, right: 14, bottom: 36, left: 42};
-        const iW = W - margin.left - margin.right;
-        const iH = H - margin.top - margin.bottom;
-        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-        const wi = cdfWeek;
-        const models = [...active];
-
-        const allQ = d3.range(nModels).flatMap(m => Object.values(modelData[m][wi].quantiles));
-        const xMin = d3.min(allQ) - 10, xMax = d3.max(allQ) + 10;
-        const x = d3.scaleLinear().domain([xMin, xMax]).range([0, iW]);
-        const yS = d3.scaleLinear().domain([0, 1]).range([iH, 0]);
-
-        svg.append("text").attr("x",W/2).attr("y",15).attr("text-anchor","middle")
-            .attr("font-family",FONT).attr("font-size","11px").attr("font-weight","600").attr("fill","#2C5F8A")
-            .text(`Week ${weeks[wi]} — How models are combined`);
-
-        g.append("g").attr("transform",`translate(0,${iH})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".0f")))
-            .selectAll("text").attr("font-family",FONT).attr("font-size","9px");
-        g.append("g").call(d3.axisLeft(yS).ticks(5).tickFormat(d3.format(".0%")))
-            .selectAll("text").attr("font-family",FONT).attr("font-size","9px");
-        g.append("text").attr("x",iW/2).attr("y",iH+32).attr("text-anchor","middle")
-            .attr("font-family",FONT).attr("font-size","10px").attr("fill","#888").text("Hospitalizations");
-        g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-32)
-            .attr("text-anchor","middle").attr("font-family",FONT).attr("font-size","10px").attr("fill","#888").text("Cumulative Probability");
-
-        // Model CDFs
-        for (let m = 0; m < nModels; m++) {
-            const pts = quantileLevels.map(tau => [x(modelData[m][wi].quantiles[tau]), yS(tau)]);
-            g.append("path").datum(pts).attr("d", d3.line().curve(d3.curveBasis))
-                .attr("fill","none").attr("stroke", MODEL_COLS[m]).attr("stroke-width",1.5).attr("opacity",0.4);
-        }
-
-        // Ensemble CDF
-        const ensPts = quantileLevels.map(tau => [x(ens[wi].quantiles[tau]), yS(tau)]);
-        g.append("path").datum(ensPts).attr("d", d3.line().curve(d3.curveBasis))
-            .attr("fill","none").attr("stroke","#2C5F8A").attr("stroke-width",3);
-
-        if (mode === "median") {
-            // Horizontal slices — model dots + median dot
-            const showTaus = [0.10, 0.25, 0.50, 0.75, 0.90];
-            showTaus.forEach(tau => {
-                const yy = yS(tau);
-                g.append("line").attr("x1",0).attr("x2",iW).attr("y1",yy).attr("y2",yy)
-                    .attr("stroke","#ddd").attr("stroke-width",0.6).attr("stroke-dasharray","3,2");
-
-                const vals = models.map(m => modelData[m][wi].quantiles[tau]);
-                // Bracket
-                const sorted = vals.slice().sort(d3.ascending);
-                g.append("line").attr("x1",x(sorted[0])).attr("x2",x(sorted[sorted.length-1]))
-                    .attr("y1",yy).attr("y2",yy)
-                    .attr("stroke","#2C5F8A").attr("stroke-width",0.8).attr("opacity",0.2);
-
-                vals.forEach((v, i) => {
-                    g.append("circle").attr("cx", x(v)).attr("cy", yy).attr("r", 3.5)
-                        .attr("fill", MODEL_COLS[models[i]]).attr("opacity", 0.7)
-                        .attr("stroke","#fff").attr("stroke-width",0.8);
-                });
-
-                const ensVal = ens[wi].quantiles[tau];
-                g.append("circle").attr("cx", x(ensVal)).attr("cy", yy).attr("r", 5.5)
-                    .attr("fill","#2C5F8A").attr("stroke","#fff").attr("stroke-width",2);
-
-                // Label
-                if (tau === 0.50) {
-                    g.append("text").attr("x", x(ensVal) + 10).attr("y", yy + 4)
-                        .attr("font-family",FONT).attr("font-size","10px").attr("fill","#2C5F8A").attr("font-weight","700")
-                        .text("← median of values");
-                }
-                // Quantile label on right
-                g.append("text").attr("x",iW+4).attr("y",yy+3)
-                    .attr("font-family",FONT).attr("font-size","8px").attr("fill","#bbb")
-                    .text(`${(tau*100).toFixed(0)}%`);
-            });
-        } else {
-            // Vertical slices — model prob dots + average dot
-            function interpCDF(m, xVal) {
-                const vals = quantileLevels.map(tau => modelData[m][wi].quantiles[tau]);
-                if (xVal <= vals[0]) return quantileLevels[0];
-                if (xVal >= vals[vals.length-1]) return quantileLevels[quantileLevels.length-1];
-                for (let i = 1; i < vals.length; i++) {
-                    if (xVal <= vals[i]) {
-                        const t = (xVal - vals[i-1]) / (vals[i] - vals[i-1]);
-                        return quantileLevels[i-1] + t * (quantileLevels[i] - quantileLevels[i-1]);
-                    }
-                }
-                return quantileLevels[quantileLevels.length-1];
-            }
-
-            const ensAllVals = Object.values(ens[wi].quantiles);
-            const sampleXs = d3.range(5).map(i => {
-                const t = (i + 0.5) / 5;
-                return d3.min(ensAllVals) + t * (d3.max(ensAllVals) - d3.min(ensAllVals));
-            });
-
-            sampleXs.forEach((xVal, si) => {
-                const xx = x(xVal);
-                g.append("line").attr("x1",xx).attr("x2",xx).attr("y1",0).attr("y2",iH)
-                    .attr("stroke","#ddd").attr("stroke-width",0.6).attr("stroke-dasharray","3,2");
-
-                const cdfVals = models.map(m => interpCDF(m, xVal));
-                const [minC, maxC] = d3.extent(cdfVals);
-                g.append("line").attr("x1",xx).attr("x2",xx)
-                    .attr("y1",yS(minC)).attr("y2",yS(maxC))
-                    .attr("stroke","#2C5F8A").attr("stroke-width",0.8).attr("opacity",0.2);
-
-                cdfVals.forEach((cdf, i) => {
-                    g.append("circle").attr("cx", xx).attr("cy", yS(cdf)).attr("r", 3.5)
-                        .attr("fill", MODEL_COLS[models[i]]).attr("opacity", 0.7)
-                        .attr("stroke","#fff").attr("stroke-width",0.8);
-                });
-
-                const avg = d3.mean(cdfVals);
-                g.append("circle").attr("cx", xx).attr("cy", yS(avg)).attr("r", 5.5)
-                    .attr("fill","#2C5F8A").attr("stroke","#fff").attr("stroke-width",2);
-
-                if (si === 2) {
-                    g.append("text").attr("x", xx + 10).attr("y", yS(avg) - 4)
-                        .attr("font-family",FONT).attr("font-size","10px").attr("fill","#2C5F8A").attr("font-weight","700")
-                        .text("← average of probabilities");
-                }
-            });
-        }
-    }
-
-    // ============ DRAW + TOGGLE ============
-    function draw() {
-        const ens = currentMode === "median" ? medianEns : lopEns;
-        drawFan(ens);
-        drawCDF(ens, currentMode);
-    }
-
-    document.getElementById("toggle-median-btn").addEventListener("click", function() {
-        currentMode = "median";
-        this.style.background = "#2C5F8A"; this.style.color = "#fff";
-        const other = document.getElementById("toggle-lop-btn");
-        other.style.background = "#f7f7f7"; other.style.color = "#555";
-        draw();
-    });
-    document.getElementById("toggle-lop-btn").addEventListener("click", function() {
-        currentMode = "lop";
-        this.style.background = "#2C5F8A"; this.style.color = "#fff";
-        const other = document.getElementById("toggle-median-btn");
-        other.style.background = "#f7f7f7"; other.style.color = "#555";
-        draw();
-    });
-
-    draw();
-
-    // ============ WIS DIAGRAM ============
-    (function() {
-        const svg = d3.select("#wis-diagram");
-        const W = 380, H = 130, F = "Helvetica Neue, Arial, sans-serif";
-        const xS = d3.scaleLinear().domain([60, 280]).range([0, 155]);
-
-        [{label:"Inside — no penalty", obs:150, l:100, u:200, pen:false, ox:0},
-         {label:"Outside — penalty added", obs:240, l:100, u:200, pen:true, ox:196}].forEach(s => {
-            const g = svg.append("g").attr("transform",`translate(${s.ox},0)`);
-            const lx=xS(s.l), ux=xS(s.u), obsX=xS(s.obs), cy=52, bh=18;
-            g.append("text").attr("x",80).attr("y",16).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","10px").attr("fill","#555").text(s.label);
-            g.append("rect").attr("x",lx).attr("y",cy-bh/2).attr("width",ux-lx).attr("height",bh)
-                .attr("fill","#4A7FB5").attr("opacity",0.15).attr("rx",2);
-            [lx,ux].forEach(px => g.append("line").attr("x1",px).attr("x2",px).attr("y1",cy-bh/2).attr("y2",cy+bh/2)
-                .attr("stroke","#4A7FB5").attr("stroke-width",1.5));
-            g.append("text").attr("x",lx).attr("y",cy-bh/2-4).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","8px").attr("fill","#4A7FB5").text("l");
-            g.append("text").attr("x",ux).attr("y",cy-bh/2-4).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","8px").attr("fill","#4A7FB5").text("u");
-            g.append("circle").attr("cx",obsX).attr("cy",cy).attr("r",4.5)
-                .attr("fill",s.pen?"#d94f4f":"#2a9d8f").attr("stroke","#fff").attr("stroke-width",1);
-            g.append("text").attr("x",obsX).attr("y",cy-10).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","8px").attr("font-weight","600")
-                .attr("fill",s.pen?"#d94f4f":"#2a9d8f").text("y");
-            // Width bracket
-            const bY=cy+bh/2+8;
-            g.append("line").attr("x1",lx).attr("x2",ux).attr("y1",bY).attr("y2",bY).attr("stroke","#4A7FB5").attr("stroke-width",0.8);
-            g.append("text").attr("x",(lx+ux)/2).attr("y",bY+11).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","8px").attr("fill","#4A7FB5").text("width");
-            if (s.pen) {
-                g.append("line").attr("x1",ux+2).attr("x2",obsX-4).attr("y1",bY).attr("y2",bY)
-                    .attr("stroke","#d94f4f").attr("stroke-width",1.2);
-                g.append("polygon").attr("points",`${obsX-4},${bY} ${obsX-9},${bY-2.5} ${obsX-9},${bY+2.5}`)
-                    .attr("fill","#d94f4f");
-                g.append("text").attr("x",(ux+obsX)/2).attr("y",bY+11).attr("text-anchor","middle")
-                    .attr("font-family",F).attr("font-size","8px").attr("fill","#d94f4f").text("penalty");
-            }
-            g.append("text").attr("x",80).attr("y",105).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","9px").attr("fill",s.pen?"#d94f4f":"#2a9d8f")
-                .text(s.pen?"Score = width + penalty":"Score = width only");
+    const GR = 92, GRi = 52, GLEN = GR - 8;
+    function drawGauge(id, cats) {
+        const svg = d3.select("#" + id); svg.selectAll("*").remove();
+        const g = svg.append("g").attr("transform", "translate(115,118)");
+        const arc = d3.arc().innerRadius(GRi).outerRadius(GR);
+        const seg = Math.PI / cats.length;
+        cats.forEach((c, i) => {
+            const sa = -Math.PI / 2 + i * seg, mid = sa + seg / 2;
+            g.append("path").attr("d", arc({ startAngle: sa, endAngle: sa + seg }))
+                .attr("fill", c.color).attr("stroke", "#fff").attr("stroke-width", 0.8);
+            g.append("text").attr("x", Math.sin(mid) * (GR + 9)).attr("y", -Math.cos(mid) * (GR + 9))
+                .attr("text-anchor", mid < -0.35 ? "end" : mid > 0.35 ? "start" : "middle")
+                .attr("dominant-baseline", "middle").attr("font-family", F).attr("font-size", "12px")
+                .attr("fill", "#888").text(c.short);
         });
-        svg.append("line").attr("x1",W/2).attr("x2",W/2).attr("y1",22).attr("y2",115)
-            .attr("stroke","#e0e0e0").attr("stroke-width",1).attr("stroke-dasharray","3,2");
-        svg.append("text").attr("x",W/2).attr("y",126).attr("text-anchor","middle")
-            .attr("font-family",F).attr("font-size","8px").attr("fill","#bbb")
-            .text("WIS = weighted average across all prediction intervals");
-    })();
+        g.append("line").attr("class", "gn").attr("x1", 0).attr("y1", 4).attr("x2", 0).attr("y2", -GLEN)
+            .attr("stroke", INK).attr("stroke-width", 2.5).attr("stroke-linecap", "round");
+        g.append("circle").attr("cx", 0).attr("cy", 0).attr("r", 5).attr("fill", INK);
+    }
+    function setNeedle(id, cats, probs) {
+        const seg = Math.PI / cats.length; let w = 0, tot = 0;
+        cats.forEach((c, i) => { const p = probs[c.key] || 0; w += (-Math.PI / 2 + (i + 0.5) * seg) * p; tot += p; });
+        const a = tot > 0 ? w / tot : 0;
+        d3.select("#" + id).select(".gn").transition().duration(350).ease(d3.easeCubicOut)
+            .attr("x2", Math.sin(a) * GLEN).attr("y2", -Math.cos(a) * GLEN)
+            .attr("x1", -Math.sin(a) * 4).attr("y1", Math.cos(a) * 4);
+    }
+    function barsHtml(cats, probs) {
+        const top = cats.reduce((a, c) => (probs[c.key] > probs[a.key] ? c : a), cats[0]);
+        return cats.map(c => `<div class="exp-bar${c.key === top.key ? " is-top" : ""}">` +
+            `<span style="color:${c.text}">${c.label}</span>` +
+            `<span class="exp-bar-track"><span class="exp-bar-fill" style="width:${((probs[c.key] || 0) * 100).toFixed(0)}%;background:${c.color}"></span></span>` +
+            `<span>${Math.round((probs[c.key] || 0) * 100)}%</span></div>`).join("");
+    }
 
-    // ============ COVERAGE DIAGRAM ============
-    (function() {
-        const svg = d3.select("#cov-diagram");
-        const W = 380, H = 150, F = "Helvetica Neue, Arial, sans-serif";
-        const margin={left:20,right:50};
-        const xS = d3.scaleLinear().domain([40,260]).range([margin.left, W-margin.right]);
-        const forecasts = [
-            {l:90,u:170,obs:140,in:true},{l:100,u:180,obs:195,in:false},
-            {l:80,u:160,obs:120,in:true},{l:110,u:190,obs:150,in:true},
-            {l:95,u:175,obs:85,in:false},{l:85,u:165,obs:130,in:true},
+    // Category bounds (true probability bounds) for the selected week.
+    function boundsFor(cfg, selWeek) {
+        if (cfg.mode === "activity") return cfg.cats;
+        const { S, L } = cfg.thresholds[selWeek], last = cfg.last;
+        const b = [
+            ["large_decrease", -1e9, last - L], ["decrease", last - L, last - S],
+            ["stable", last - S, last + S], ["increase", last + S, last + L],
+            ["large_increase", last + L, 1e9]
         ];
-        const nIn = forecasts.filter(f=>f.in).length;
-        const rowH=16, startY=10;
+        return cfg.cats.map((c, i) => ({ ...c, lo: b[i][1], hi: b[i][2] }));
+    }
 
-        forecasts.forEach((f,i) => {
-            const cy=startY+i*rowH+rowH/2;
-            const lx=xS(f.l),ux=xS(f.u),ox=xS(f.obs);
-            svg.append("rect").attr("x",lx).attr("y",cy-4).attr("width",ux-lx).attr("height",8)
-                .attr("fill","#4A7FB5").attr("opacity",0.13).attr("rx",1.5);
-            [lx,ux].forEach(px=>svg.append("line").attr("x1",px).attr("x2",px).attr("y1",cy-4).attr("y2",cy+4)
-                .attr("stroke","#4A7FB5").attr("stroke-width",1));
-            svg.append("circle").attr("cx",ox).attr("cy",cy).attr("r",3.5)
-                .attr("fill",f.in?"#2a9d8f":"#d94f4f").attr("stroke","#fff").attr("stroke-width",0.8);
-            svg.append("text").attr("x",W-margin.right+12).attr("y",cy+3.5).attr("text-anchor","middle")
-                .attr("font-family",F).attr("font-size","11px").attr("fill",f.in?"#2a9d8f":"#d94f4f").text(f.in?"✓":"✗");
+    function drawFan(cfg, state) {
+        const svg = d3.select("#" + cfg.bandId); svg.selectAll("*").remove();
+        const W = 560, H = 300, m = { t: 16, r: 58, b: 34, l: 52 };
+        const iw = W - m.l - m.r, ih = H - m.t - m.b;
+        const histW = 58, histGap = 12, plotW = iw - histW - histGap;
+        const stripX0 = plotW + histGap, stripX1 = iw;
+        const g = svg.append("g").attr("transform", `translate(${m.l},${m.t})`);
+        const No = cfg.observed.length, lastX = No - 1, maxX = lastX + 4;
+        const x = d3.scaleLinear().domain([0, maxX]).range([0, plotW]);
+        const y = d3.scaleLinear().domain([0, cfg.yMax]).range([ih, 0]);
+        const sigBase = cfg.spreads[state.spread];
+        const mu = k => cfg.last + (state.target - cfg.last) * (k + 1) / 4;
+        const sig = k => sigBase * Math.sqrt(k + 1);
+        const bounds = boundsFor(cfg, state.selWeek);
+
+        // Colored bands for the selected week (activity: full width; trend: forecast region)
+        const bx0 = cfg.mode === "trend" ? x(lastX) : 0;
+        bounds.forEach(c => {
+            const lo = Math.max(0, c.lo), hi = Math.min(cfg.yMax, c.hi);
+            if (hi <= lo) return;
+            g.append("rect").attr("x", bx0).attr("width", iw - bx0)
+                .attr("y", y(hi)).attr("height", y(lo) - y(hi))
+                .attr("fill", c.color).attr("opacity", 0.42);
+            if (y(lo) - y(hi) > 13)
+                g.append("text").attr("x", iw + 6).attr("y", (y(lo) + y(hi)) / 2).attr("dominant-baseline", "middle")
+                    .attr("font-family", F).attr("font-size", "11px").attr("fill", c.text).attr("font-weight", 600)
+                    .text(c.short);
         });
 
-        const sumY = startY + forecasts.length*rowH + 8;
-        svg.append("line").attr("x1",margin.left).attr("x2",W-margin.right+20).attr("y1",sumY).attr("y2",sumY)
-            .attr("stroke","#e0e0e0").attr("stroke-width",1);
-        svg.append("text").attr("x",W/2).attr("y",sumY+16).attr("text-anchor","middle")
-            .attr("font-family",F).attr("font-size","10px").attr("fill","#333")
-            .text(`Coverage = ${nIn}/${forecasts.length} = ${Math.round(nIn/forecasts.length*100)}%  (nominal 50%)`);
-        svg.append("text").attr("x",W/2).attr("y",sumY+30).attr("text-anchor","middle")
-            .attr("font-family",F).attr("font-size","9px").attr("font-weight","600").attr("fill","#e6a817")
-            .text("Underconfident — intervals too wide");
-        // Legend
-        const ly=sumY+44;
-        svg.append("circle").attr("cx",W/2-50).attr("cy",ly).attr("r",3).attr("fill","#2a9d8f");
-        svg.append("text").attr("x",W/2-43).attr("y",ly+3).attr("font-family",F).attr("font-size","8px").attr("fill","#999").text("Inside PI");
-        svg.append("circle").attr("cx",W/2+20).attr("cy",ly).attr("r",3).attr("fill","#d94f4f");
-        svg.append("text").attr("x",W/2+27).attr("y",ly+3).attr("font-family",F).attr("font-size","8px").attr("fill","#999").text("Outside PI");
-    })();
+        // y axis
+        const yAxis = d3.axisLeft(y).ticks(5).tickFormat(d3.format("~s"));
+        const ya = g.append("g").call(yAxis);
+        ya.selectAll("text").attr("font-family", F).attr("font-size", "11px").attr("fill", "#888");
+        ya.selectAll("line").attr("stroke", "#ddd"); ya.select(".domain").attr("stroke", "#ccc");
+        g.append("text").attr("transform", "rotate(-90)").attr("x", -ih / 2).attr("y", -42).attr("text-anchor", "middle").attr("font-family", F).attr("font-size", "11px").attr("fill", "#aaa").text("Weekly admissions");
+
+        // 90% then 50% prediction-interval bands (start at the first forecast week,
+        // not linked to the last reported point)
+        const piData = z => d3.range(4).map(k => ({ x: lastX + k + 1, lo: Math.max(0, mu(k) - z * sig(k)), hi: Math.min(cfg.yMax, mu(k) + z * sig(k)) }));
+        const area = d3.area().x(d => x(d.x)).y0(d => y(d.lo)).y1(d => y(d.hi)).curve(d3.curveMonotoneX);
+        g.append("path").datum(piData(Z90)).attr("d", area).attr("fill", ACCENT).attr("opacity", 0.14);
+        g.append("path").datum(piData(Z50)).attr("d", area).attr("fill", ACCENT).attr("opacity", 0.22);
+
+        // median forecast line
+        const medPts = d3.range(4).map(k => ({ x: lastX + k + 1, v: mu(k) }));
+        g.append("path").datum(medPts).attr("d", d3.line().x(d => x(d.x)).y(d => y(d.v)).curve(d3.curveMonotoneX))
+            .attr("fill", "none").attr("stroke", ACCENT).attr("stroke-width", 2.2);
+
+        // observed line + dots
+        const obs = cfg.observed.map((v, i) => ({ x: i, v }));
+        g.append("path").datum(obs).attr("d", d3.line().x(d => x(d.x)).y(d => y(d.v)))
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.8);
+        g.selectAll(".od").data(obs).enter().append("circle").attr("cx", d => x(d.x)).attr("cy", d => y(d.v))
+            .attr("r", 3).attr("fill", INK);
+
+        // last-reported reference line
+        g.append("line").attr("x1", 0).attr("x2", iw).attr("y1", y(cfg.last)).attr("y2", y(cfg.last))
+            .attr("stroke", INK).attr("stroke-opacity", 0.35).attr("stroke-dasharray", "5,4");
+
+        // selected-week highlight
+        const sx = x(lastX + state.selWeek + 1);
+        g.append("line").attr("x1", sx).attr("x2", sx).attr("y1", 0).attr("y2", ih)
+            .attr("stroke", ACCENT_DK).attr("stroke-width", 1.2).attr("stroke-dasharray", "3,3");
+        g.append("text").attr("x", sx).attr("y", -3).attr("text-anchor", "middle")
+            .attr("font-family", F).attr("font-size", "11px").attr("fill", ACCENT_DK)
+            .text("week " + (state.selWeek + 1));
+
+        // baseline + x labels
+        g.append("line").attr("x1", 0).attr("x2", plotW).attr("y1", ih).attr("y2", ih).attr("stroke", "#ccc");
+        g.append("text").attr("x", x(lastX)).attr("y", ih + 15).attr("text-anchor", "middle")
+            .attr("font-family", F).attr("font-size", "11px").attr("fill", "#888").text("last");
+        d3.range(4).forEach(k => g.append("text").attr("x", x(lastX + k + 1)).attr("y", ih + 15).attr("text-anchor", "middle")
+            .attr("font-family", F).attr("font-size", "11px").attr("fill", "#888").text("+" + (k + 1)));
+        g.append("text").attr("x", plotW / 2).attr("y", ih + 30).attr("text-anchor", "middle")
+            .attr("font-family", F).attr("font-size", "12px").attr("fill", "#aaa").text("weeks →");
+
+        // --- vertical forecast distribution at the selected week (right of the fan) ---
+        const M = mu(state.selWeek), S = sig(state.selWeek), probs = {};
+        const pdf = v => Math.exp(-0.5 * ((v - M) / S) ** 2) / (S * Math.sqrt(2 * Math.PI));
+        const fmax = pdf(M);
+        // connector from the selected-week median across to the distribution
+        g.append("line").attr("x1", sx).attr("x2", stripX0).attr("y1", y(M)).attr("y2", y(M))
+            .attr("stroke", ACCENT_DK).attr("stroke-opacity", 0.4).attr("stroke-dasharray", "2,2");
+        g.append("line").attr("x1", stripX0).attr("x2", stripX0).attr("y1", 0).attr("y2", ih).attr("stroke", "#e1e7e9");
+        // density, colored by the band each slice falls in
+        bounds.forEach(c => {
+            const lo = Math.max(0, c.lo), hi = Math.min(cfg.yMax, c.hi);
+            if (hi <= lo) return;
+            const ys = d3.range(0, 41).map(i => lo + (hi - lo) * i / 40);
+            g.append("path").datum(ys.map(v => ({ v })))
+                .attr("d", d3.area().y(d => y(d.v)).x0(stripX0).x1(d => stripX0 + (pdf(d.v) / fmax) * histW))
+                .attr("fill", c.color).attr("opacity", 0.8);
+        });
+        // full density outline + median tick
+        const yAll = d3.range(0, 121).map(i => cfg.yMax * i / 120);
+        g.append("path").datum(yAll.map(v => ({ v })))
+            .attr("d", d3.line().y(d => y(d.v)).x(d => stripX0 + (pdf(d.v) / fmax) * histW))
+            .attr("fill", "none").attr("stroke", ACCENT_DK).attr("stroke-width", 1).attr("opacity", 0.55);
+        g.append("line").attr("x1", stripX0).attr("x2", stripX0 + histW).attr("y1", y(M)).attr("y2", y(M))
+            .attr("stroke", ACCENT_DK).attr("stroke-width", 1.2).attr("stroke-dasharray", "3,2").attr("opacity", 0.6);
+
+        bounds.forEach(c => probs[c.key] = ncdf(c.hi, M, S) - ncdf(c.lo, M, S));
+        return probs;
+    }
+
+    function makeFanExplainer(cfg) {
+        if (!document.getElementById(cfg.bandId)) return;
+        drawGauge(cfg.gaugeId, cfg.cats);
+        const midEl = document.getElementById(cfg.midId), outEl = document.getElementById(cfg.midOutId);
+        const state = { target: +midEl.value, spread: "medium", selWeek: 3 };
+        function seg(id, key, cast) {
+            document.querySelectorAll("#" + id + " button").forEach(b => b.addEventListener("click", () => {
+                document.querySelectorAll("#" + id + " button").forEach(x => x.classList.toggle("active", x === b));
+                state[key] = cast(b.dataset[key === "spread" ? "s" : "w"]); render();
+            }));
+        }
+        seg(cfg.spreadId, "spread", v => v);
+        seg(cfg.weekId, "selWeek", v => +v);
+        midEl.addEventListener("input", () => { state.target = +midEl.value; render(); });
+        function render() {
+            outEl.textContent = cfg.outText(state.target);
+            const probs = drawFan(cfg, state);
+            setNeedle(cfg.gaugeId, cfg.cats, probs);
+            document.getElementById(cfg.barsId).innerHTML = barsHtml(cfg.cats, probs);
+            const top = cfg.cats.reduce((a, c) => (probs[c.key] > probs[a.key] ? c : a), cfg.cats[0]);
+            document.getElementById(cfg.readId).innerHTML =
+                `Week ${state.selWeek + 1}: most likely <strong style="color:${top.text}">${top.label}</strong> (${Math.round(probs[top.key] * 100)}%)`;
+        }
+        render();
+    }
+
+    makeFanExplainer({
+        mode: "activity", bandId: "activity-band-fig", gaugeId: "activity-gauge",
+        barsId: "activity-bars", readId: "activity-read",
+        midId: "act-mid", midOutId: "act-mid-out", spreadId: "act-spread", weekId: "act-week",
+        last: 6000, yMax: 46000, observed: [2200, 2900, 3700, 4500, 5200, 6000],
+        spreads: { narrow: 1100, medium: 2200, wide: 3800 },
+        outText: v => fmt(v) + " admissions",
+        cats: [
+            { key: "low", label: "Low", short: "Low", color: "#E4F7EE", text: "#4A9A6F", lo: -1e9, hi: 7408 },
+            { key: "moderate", label: "Medium", short: "Med", color: "#9CD8D3", text: "#4AA099", lo: 7408, hi: 24543 },
+            { key: "high", label: "High", short: "High", color: "#4B9AC1", text: "#3A7BA0", lo: 24543, hi: 41674 },
+            { key: "very_high", label: "Very High", short: "V.High", color: "#4D6891", text: "#4D6891", lo: 41674, hi: 1e9 }
+        ]
+    });
+
+    makeFanExplainer({
+        mode: "trend", bandId: "trend-band-fig", gaugeId: "trend-gauge",
+        barsId: "trend-bars", readId: "trend-read",
+        midId: "trend-mid", midOutId: "trend-mid-out", spreadId: "trend-spread", weekId: "trend-week",
+        last: 6000, yMax: 24000, observed: [2200, 2900, 3700, 4500, 5200, 6000],
+        spreads: { narrow: 700, medium: 1400, wide: 2600 },
+        thresholds: [{ S: 1020, L: 5782 }, { S: 1700, L: 10203 }, { S: 2381, L: 13604 }, { S: 3401, L: 17005 }],
+        outText: v => fmt(v) + " admissions (" + signed(v - 6000) + " vs last)",
+        cats: [
+            { key: "large_decrease", label: "Large decrease", short: "Lg↓", color: "#75BFBD", text: "#4FA09E" },
+            { key: "decrease", label: "Decrease", short: "Dec", color: "#9CD3B4", text: "#6BAD8A" },
+            { key: "stable", label: "Stable", short: "Stbl", color: "#D3D3CD", text: "#777" },
+            { key: "increase", label: "Increase", short: "Inc", color: "#EFDA86", text: "#C4A840" },
+            { key: "large_increase", label: "Large increase", short: "Lg↑", color: "#E8A56D", text: "#CF7A3A" }
+        ]
+    });
+})();
+</script>
+<script>
+// ===== Pinned table of contents: smooth-scroll, open collapsed sections, active highlight =====
+(function () {
+    const toc = document.querySelector(".about-toc");
+    if (!toc) return;
+    const links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+    const byId = {};
+    const sections = [];
+    links.forEach(function (a) {
+        const id = a.getAttribute("href").slice(1);
+        const target = document.getElementById(id);
+        if (!target) return;
+        byId[id] = a;
+        sections.push(target);
+        a.addEventListener("click", function (e) {
+            e.preventDefault();
+            if (target.tagName === "DETAILS") target.open = true;
+            const tocH = toc.offsetHeight;
+            const y = target.getBoundingClientRect().top + window.scrollY - tocH - 8;
+            window.scrollTo({ top: y, behavior: "smooth" });
+            history.replaceState(null, "", "#" + id);
+        });
+    });
+
+    // Highlight the section currently at the top of the viewport. Computed on
+    // scroll (robust to fast jumps and collapsed sections).
+    function updateActive() {
+        const ref = window.scrollY + toc.offsetHeight + 24;
+        let current = sections[0];
+        for (let i = 0; i < sections.length; i++) {
+            if (sections[i].getBoundingClientRect().top + window.scrollY <= ref) {
+                current = sections[i];
+            }
+        }
+        links.forEach(function (l) { l.classList.remove("active"); });
+        if (current && byId[current.id]) byId[current.id].classList.add("active");
+    }
+    window.addEventListener("scroll", updateActive, { passive: true });
+    window.addEventListener("resize", updateActive);
+    updateActive();
 })();
 </script>
 </body>

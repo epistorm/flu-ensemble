@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Epistorm Ensemble — Influenza Hospitalization Forecast</title>
-    <link rel="stylesheet" href="css/style.css?v=17">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/style.css?v=34">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
 </head>
@@ -31,9 +34,6 @@
         <h2 class="section-title">National Overview</h2>
         <!-- Tab bar -->
         <div class="tab-bar" id="tab-bar">
-            <button class="tab active" data-tab="activity">Influenza Activity</button>
-            <button class="tab" data-tab="trend">Influenza Trend</button>
-            <button class="tab" data-tab="admissions">Weekly Hospital Admissions</button>
             <div class="tab-bar-actions">
                 <label class="season-picker">Season
                     <select id="season-select" class="season-select" title="Choose a flu season"></select>
@@ -46,6 +46,14 @@
             <div class="card card-map">
                 <div class="map-with-controls">
                     <div class="map-left-controls">
+                        <div class="control-group">
+                            <div class="control-title">Map View</div>
+                            <div class="seg-group mapview-control" id="mapview-buttons">
+                                <button class="seg-btn mapview-seg active" data-tab="activity">Activity</button>
+                                <button class="seg-btn mapview-seg" data-tab="trend">Trend</button>
+                                <button class="seg-btn mapview-seg" data-tab="admissions">Admissions</button>
+                            </div>
+                        </div>
                         <div class="control-group">
                             <div class="control-title">Forecast Date</div>
                             <select id="overview-date-select" class="season-select overview-date-select"></select>
@@ -69,12 +77,14 @@
                                 <button class="ensemble-btn" data-ensemble="lop">LOP</button>
                             </div>
                         </div>
-                        <div class="map-trend-summary" id="map-trend-summary"></div>
-                        <div class="legend-container" id="legend"></div>
                     </div>
                     <div class="map-container">
                         <svg id="us-map"></svg>
                     </div>
+                </div>
+                <div class="map-caption">
+                    <div class="map-trend-summary" id="map-trend-summary"></div>
+                    <div class="legend-container" id="legend"></div>
                 </div>
                 <div class="map-bottom-controls">
                     <div class="control-title">Forecast Week</div>
@@ -93,13 +103,30 @@
                     <p class="ensemble-disclaimer" id="overview-disclaimer" style="display:none;"></p>
                 </div>
                 <div class="gauges-stack">
-                    <div class="gauge-wrapper" id="active-gauge-wrapper">
-                        <h3 class="gauge-title" id="active-gauge-title">Trend Forecast</h3>
-                        <svg id="gauge-active"></svg>
+                    <div class="gauge-block gauge-clickable" data-tab="activity" title="Show activity levels on the map">
+                        <div class="gauge-block-head">
+                            <h3 class="gauge-title" id="activity-gauge-title">Activity Level: United States</h3>
+                            <span class="legend-info-hint gauge-info-hint" id="activity-info-hint" tabindex="0"><span class="legend-info-icon">i</span>What do these mean?</span>
+                        </div>
+                        <div class="gauge-row">
+                            <div class="gauge-wrapper">
+                                <svg id="gauge-activity"></svg>
+                            </div>
+                            <div class="bar-chart-container" id="activity-bar-chart"></div>
+                        </div>
                     </div>
-                    <div class="legend-info-hint overview-info-hint" id="overview-info-hint" tabindex="0"><span class="legend-info-icon">i</span>What do these levels mean?</div>
-                    <div class="bar-chart-container" id="us-bar-chart"></div>
-                    <div class="admissions-dist-container" id="admissions-dist"></div>
+                    <div class="gauge-block gauge-clickable" data-tab="trend" title="Show trend forecast on the map">
+                        <div class="gauge-block-head">
+                            <h3 class="gauge-title" id="trend-gauge-title">Trend Forecast: United States</h3>
+                            <span class="legend-info-hint gauge-info-hint" id="trend-info-hint" tabindex="0"><span class="legend-info-icon">i</span>What do these mean?</span>
+                        </div>
+                        <div class="gauge-row">
+                            <div class="gauge-wrapper">
+                                <svg id="gauge-trend"></svg>
+                            </div>
+                            <div class="bar-chart-container" id="trend-bar-chart"></div>
+                        </div>
+                    </div>
                 </div>
                 <button class="info-btn" data-info="gauges" aria-label="Info">i</button>
             </div>
@@ -165,13 +192,13 @@
     <div class="tooltip" id="tooltip"></div>
     <div class="traj-tip" id="traj-tooltip"></div>
 
-    <script src="js/colors.js?v=17"></script>
-    <script src="js/legend.js?v=17"></script>
-    <script src="js/gauges.js?v=17"></script>
-    <script src="js/map.js?v=17"></script>
-    <script src="js/controls.js?v=17"></script>
-    <script src="js/trajectories.js?v=17"></script>
-    <script src="js/tour.js?v=17"></script>
-    <script src="js/main.js?v=17"></script>
+    <script src="js/colors.js?v=32"></script>
+    <script src="js/legend.js?v=32"></script>
+    <script src="js/gauges.js?v=32"></script>
+    <script src="js/map.js?v=32"></script>
+    <script src="js/controls.js?v=32"></script>
+    <script src="js/trajectories.js?v=35"></script>
+    <script src="js/tour.js?v=32"></script>
+    <script src="js/main.js?v=32"></script>
 </body>
 </html>

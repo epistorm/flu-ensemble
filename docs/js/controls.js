@@ -9,14 +9,37 @@ function initControls() {
 }
 
 function initTabs() {
-    d3.selectAll(".tab").on("click", function () {
-        const tab = d3.select(this).attr("data-tab");
-        AppState.currentTab = tab;
-        d3.selectAll(".tab").classed("active", false);
-        d3.select(this).classed("active", true);
-        updateRateToggleVisibility();
-        updateAll();
+    // The map-view selector chooses which layer the map (and legend) show:
+    // Activity, Trend, or Admissions. The overview gauges always show both.
+    d3.selectAll(".mapview-seg").on("click", function () {
+        setMapView(d3.select(this).attr("data-tab"));
     });
+
+    // Clicking a gauge in the overview panel also switches the map to that
+    // layer (except when the click lands on its info hint).
+    d3.selectAll(".gauge-clickable").on("click", function (event) {
+        if (event.target.closest && event.target.closest(".gauge-info-hint")) return;
+        setMapView(d3.select(this).attr("data-tab"));
+    });
+
+    updateGaugeViewHighlight();
+}
+
+// Switch which layer the map is colored by, keeping the Map View buttons and
+// the overview gauges in sync.
+function setMapView(tab) {
+    AppState.currentTab = tab;
+    d3.selectAll(".mapview-seg").classed("active", false);
+    d3.select(`.mapview-seg[data-tab="${tab}"]`).classed("active", true);
+    updateGaugeViewHighlight();
+    updateRateToggleVisibility();
+    updateAll();
+}
+
+// Highlight the overview gauge whose layer the map is currently showing.
+function updateGaugeViewHighlight() {
+    d3.selectAll(".gauge-clickable").classed("is-active-view", false);
+    d3.select(`.gauge-clickable[data-tab="${AppState.currentTab}"]`).classed("is-active-view", true);
 }
 
 function initEstimateButtons() {

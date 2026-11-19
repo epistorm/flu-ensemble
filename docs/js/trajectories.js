@@ -3,7 +3,7 @@
 const TRAJ_WIDTH = 1100;
 const TRAJ_HEIGHT = 420;
 const TRAJ_MARGIN = { top: 20, right: 30, bottom: 40, left: 60 };
-const TRAJ_FONT = "Helvetica Neue, Arial, sans-serif";
+const TRAJ_FONT = "Libre Franklin, Helvetica Neue, Arial, sans-serif";
 const TRAJ_FONT_SIZE = "12px";
 
 let trajSvg, trajX, trajY, trajChartG;
@@ -234,6 +234,10 @@ function buildActivitySection() {
 // --- Main draw function ---
 
 async function loadAndDrawTrajectories(fips) {
+    // Keep the overview sidebar in sync with the selected location.
+    AppState.selectedState = fips;
+    if (typeof updateGauges === "function") updateGauges();
+
     const folder = AppState.ensembleModel === "lop" ? "trajectories_lop" : "trajectories";
     try {
         trajData = await d3.json(`data/${folder}/${fips}.json`);
@@ -375,7 +379,7 @@ function drawTrajectories() {
         .attr("font-size", TRAJ_FONT_SIZE);
 
     axesG.append("g")
-        .call(d3.axisLeft(trajY).ticks(6).tickFormat(d3.format(",.0f")))
+        .call(d3.axisLeft(trajY).ticks(6).tickFormat(d3.format("~s")))
         .selectAll("text")
         .attr("font-family", TRAJ_FONT)
         .attr("font-size", TRAJ_FONT_SIZE);
